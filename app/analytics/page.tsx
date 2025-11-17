@@ -65,7 +65,11 @@ export default function AnalyticsPage () {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
                   whileHover={{ y: -4, scale: 1.02 }}
-                  className='bg-slate-800/90 backdrop-blur-sm rounded-2xl p-6 border border-slate-600 shadow-lg'
+                  className='bg-slate-700/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg'
+                  style={{
+                    boxShadow:
+                      'inset 0 1px 2px rgba(0, 0, 0, 0.3), 0 20px 25px -5px rgba(0, 0, 0, 0.3)'
+                  }}
                 >
                   <div className='flex items-center justify-between mb-4'>
                     <div className='p-3 bg-slate-700 rounded-xl'>

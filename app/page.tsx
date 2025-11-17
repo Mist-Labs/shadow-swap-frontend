@@ -8,7 +8,7 @@ import { PageTransition } from '@/components/layout/page-transition'
 export default function Home () {
   return (
     <PageTransition>
-      <div className='relative min-h-[calc(100vh-4rem)] bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden'>
+      <div className='relative min-h-[calc(100vh-4rem)] bg-linear-to-br from-slate-900 via-slate-800 to-slate-900'>
         {/* Animated Background Elements */}
         <div className='fixed inset-0 overflow-hidden pointer-events-none opacity-20'>
           <motion.div
@@ -110,7 +110,7 @@ export default function Home () {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className='grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto'
+            className='grid grid-cols-2 bg-slate-700/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg t md:grid-cols-4 gap-6 max-w-4xl mx-auto'
           >
             {[
               { value: '$2.5M+', label: 'Volume 24h' },

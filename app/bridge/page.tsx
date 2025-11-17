@@ -41,18 +41,26 @@ export default function BridgePage () {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className='bg-slate-800/90 backdrop-blur-sm rounded-xl p-4 border border-slate-600 shadow-xl'
+            className='bg-slate-700/80 backdrop-blur-sm rounded-xl p-4 shadow-xl'
+            style={{
+              boxShadow:
+                'inset 0 1px 2px rgba(0, 0, 0, 0.3), 0 20px 25px -5px rgba(0, 0, 0, 0.3)'
+            }}
           >
             {/* From Chain */}
             <div className='mb-3'>
               <label className='block text-xs font-medium text-slate-300 mb-1'>
                 From
               </label>
-              <div className='bg-linear-to-br from-slate-700 to-slate-600 rounded-lg p-3 border border-slate-500'>
+              <div
+                className='bg-slate-600/60 rounded-lg p-3'
+                style={{ boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.4)' }}
+              >
                 <select
                   value={fromChain}
                   onChange={e => setFromChain(e.target.value)}
-                  className='w-full mb-2 px-3 py-1.5 bg-slate-800 border border-slate-600 rounded-md font-medium text-white focus:outline-none focus:ring-2 focus:ring-slate-500'
+                  className='w-full mb-2 px-3 py-1.5 bg-slate-700/80 rounded-md font-medium text-white focus:outline-none focus:ring-2 focus:ring-slate-500'
+                  style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.3)' }}
                 >
                   {chains.map(chain => (
                     <option key={chain} value={chain}>
@@ -78,7 +86,7 @@ export default function BridgePage () {
               <motion.button
                 whileHover={{ rotate: 180, scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                className='p-2 bg-linear-to-br from-indigo-500 to-violet-600 rounded-lg border-4 border-white shadow-lg'
+                className='p-2 bg-linear-to-br from-indigo-500 to-violet-600 rounded-lg border-4 border-white shadow-lg cursor-pointer'
               >
                 <ArrowRightLeft size={16} className='text-white' />
               </motion.button>
@@ -89,11 +97,15 @@ export default function BridgePage () {
               <label className='block text-xs font-medium text-slate-300 mb-1'>
                 To
               </label>
-              <div className='bg-linear-to-br from-slate-600 to-slate-500 rounded-lg p-3 border border-slate-500'>
+              <div
+                className='bg-slate-600/60 rounded-lg p-3'
+                style={{ boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.4)' }}
+              >
                 <select
                   value={toChain}
                   onChange={e => setToChain(e.target.value)}
-                  className='w-full mb-2 px-3 py-1.5 bg-slate-800 border border-slate-600 rounded-md font-medium text-white focus:outline-none focus:ring-2 focus:ring-slate-500'
+                  className='w-full mb-2 px-3 py-1.5 bg-slate-700/80 rounded-md font-medium text-white focus:outline-none focus:ring-2 focus:ring-slate-500'
+                  style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.3)' }}
                 >
                   {chains
                     .filter(c => c !== fromChain)
@@ -121,7 +133,8 @@ export default function BridgePage () {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className='mt-3 p-2 bg-slate-700 border border-slate-600 rounded-md'
+              className='mt-3 p-2 bg-slate-600/60 rounded-md'
+              style={{ boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.4)' }}
             >
               <div className='flex items-start gap-2'>
                 <Shield size={14} className='text-slate-400 mt-0.5' />
@@ -141,7 +154,7 @@ export default function BridgePage () {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className='w-full mt-3 py-2 bg-linear-to-r from-indigo-600 to-violet-600 text-white rounded-md font-semibold text-sm shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 transition-all'
+              className='w-full mt-3 py-2 bg-linear-to-r from-indigo-600 to-violet-600 text-white rounded-md font-semibold text-sm shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 transition-all cursor-pointer'
             >
               Bridge Assets
             </motion.button>
@@ -172,7 +185,8 @@ export default function BridgePage () {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 + index * 0.1 }}
                 whileHover={{ y: -1 }}
-                className='bg-slate-800/90 backdrop-blur-sm rounded-md p-3 border border-slate-600 shadow-sm text-center'
+                className='bg-slate-700/80 backdrop-blur-sm rounded-md p-3 shadow-sm text-center'
+                style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.3)' }}
               >
                 <feature.icon
                   size={20}

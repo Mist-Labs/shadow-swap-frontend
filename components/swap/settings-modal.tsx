@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { Modal } from '@/components/ui/modal'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { AlertTriangle, Info } from 'lucide-react'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -34,111 +35,168 @@ export function SettingsModal ({
     }
   }
 
+  const isHighSlippage = parseFloat(customSlippage) > 5
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title='Settings'>
-      <div className='space-y-6'>
+    <Modal isOpen={isOpen} onClose={onClose} title='Transaction Settings'>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className='space-y-6'
+      >
         {/* Slippage Tolerance */}
         <div className='space-y-4'>
           <div>
             <label className='block text-base font-semibold text-white mb-2'>
               Slippage Tolerance
             </label>
-            <p className='text-sm text-slate-400 mb-3'>
+            <p className='text-sm text-slate-400 leading-relaxed'>
               Your transaction will revert if the price changes unfavorably by
               more than this percentage.
             </p>
           </div>
 
           {/* Preset Buttons */}
-          <div className='grid grid-cols-3 gap-2'>
-            {PRESET_SLIPPAGES.map(value => (
-              <button
+          <div className='grid grid-cols-3 gap-3'>
+            {PRESET_SLIPPAGES.map((value, index) => (
+              <motion.button
                 key={value}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.05 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => handlePresetClick(value)}
-                className={`py-2.5 px-3 rounded-lg font-semibold transition-all duration-200 ${
+                className={`py-3 px-4 rounded-xl font-semibold transition-all duration-200 cursor-pointer ${
                   slippage === value
-                    ? 'bg-linear-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
-                    : 'bg-slate-700 hover:bg-slate-600 text-slate-300 hover:shadow-sm'
+                    ? 'bg-linear-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
+                    : 'bg-slate-700/80 hover:bg-slate-600/80 text-slate-300 hover:shadow-md'
                 }`}
+                style={{
+                  boxShadow:
+                    slippage === value
+                      ? 'inset 0 1px 2px rgba(255, 255, 255, 0.1)'
+                      : 'inset 0 1px 2px rgba(0, 0, 0, 0.3)'
+                }}
               >
                 {value}%
-              </button>
+              </motion.button>
             ))}
           </div>
 
           {/* Custom Input */}
           <div className='space-y-2'>
             <label className='block text-sm font-medium text-slate-300'>
-              Custom Slippage
+              Custom Slippage (%)
             </label>
             <div className='relative'>
-              <input
+              <motion.input
+                whileFocus={{ scale: 1.01 }}
                 type='text'
                 value={customSlippage}
                 onChange={e => handleCustomChange(e.target.value)}
                 placeholder='0.5'
-                className='w-full px-3 py-2 bg-linear-to-br from-slate-700/80 to-slate-600/60 border border-slate-500/60 rounded-lg text-white placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all backdrop-blur-sm'
+                className='w-full px-4 py-3 bg-slate-700/80 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all duration-200'
+                style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.4)' }}
               />
-              <span className='absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium'>
+              <span className='absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium'>
                 %
               </span>
             </div>
           </div>
 
           {/* Warning */}
-          {parseFloat(customSlippage) > 5 && (
-            <div className='p-3 bg-linear-to-br from-amber-900/80 to-orange-900/60 border border-amber-700/60 rounded-lg backdrop-blur-sm'>
-              <div className='flex items-start gap-2'>
-                <span className='text-amber-400'>⚠️</span>
-                <div>
-                  <h4 className='font-semibold text-amber-300 text-sm'>
-                    High Slippage Warning
-                  </h4>
-                  <p className='text-xs text-amber-400'>
-                    High slippage tolerance may result in unfavorable trades.
-                  </p>
+          <AnimatePresence>
+            {isHighSlippage && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className='overflow-hidden'
+              >
+                <div
+                  className='p-4 bg-amber-900/40 rounded-xl backdrop-blur-sm border border-amber-700/30'
+                  style={{ boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.4)' }}
+                >
+                  <div className='flex items-start gap-3'>
+                    <motion.div
+                      animate={{ rotate: [0, -10, 10, -10, 0] }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <AlertTriangle
+                        size={20}
+                        className='text-amber-400 shrink-0 mt-0.5'
+                      />
+                    </motion.div>
+                    <div>
+                      <h4 className='font-semibold text-amber-300 text-sm mb-1'>
+                        High Slippage Warning
+                      </h4>
+                      <p className='text-xs text-amber-400/90 leading-relaxed'>
+                        High slippage tolerance may result in unfavorable
+                        trades. Consider using a lower value for better price
+                        protection.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Info Box */}
-        <div className='p-4 bg-linear-to-br from-slate-700/60 to-slate-600/40 border border-slate-500/60 rounded-xl backdrop-blur-sm'>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className='p-4 bg-slate-700/60 rounded-xl backdrop-blur-sm'
+          style={{ boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.4)' }}
+        >
           <div className='flex items-start gap-3'>
-            <div className='w-6 h-6 bg-slate-600 rounded-md flex items-center justify-center shrink-0'>
-              <span className='text-slate-400 text-xs'>💡</span>
+            <div className='w-8 h-8 bg-slate-600/80 rounded-lg flex items-center justify-center shrink-0'>
+              <Info size={16} className='text-slate-300' />
             </div>
             <div>
-              <h4 className='text-sm font-semibold text-white mb-1'>
+              <h4 className='text-sm font-semibold text-white mb-1.5'>
                 What is Slippage?
               </h4>
               <p className='text-xs text-slate-400 leading-relaxed'>
-                Slippage is the difference between expected and actual trade
-                price. Lower slippage means more precise trades but may fail in
-                volatile markets.
+                Slippage is the difference between the expected price of a trade
+                and the actual price at which it executes. Lower slippage means
+                more precise trades but may fail in volatile markets. Higher
+                slippage increases success rate but may result in less favorable
+                prices.
               </p>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Advanced Settings (Future) */}
-        <div className='p-3 bg-slate-700/50 border border-slate-600/50 rounded-lg'>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className='p-4 bg-slate-800/50 rounded-xl border border-slate-700/50'
+          style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.3)' }}
+        >
           <div className='flex items-center justify-between'>
             <div>
-              <h4 className='font-medium text-white text-sm'>
+              <h4 className='font-medium text-white text-sm mb-1'>
                 Advanced Settings
               </h4>
               <p className='text-xs text-slate-400'>
-                Transaction deadline, gas price
+                Transaction deadline, gas price optimization
               </p>
             </div>
-            <span className='text-xs text-slate-400 bg-slate-600 px-2 py-0.5 rounded-full'>
-              Soon
+            <span className='text-xs text-slate-400 bg-slate-700/80 px-2.5 py-1 rounded-full'>
+              Coming Soon
             </span>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </Modal>
   )
 }

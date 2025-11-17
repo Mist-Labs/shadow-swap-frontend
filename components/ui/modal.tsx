@@ -31,12 +31,16 @@ export function Modal ({ isOpen, onClose, children, title }: ModalProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className='fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50'
+            className='fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 cursor-pointer'
             onClick={onClose}
           />
           <div className='fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none'>
             <div
-              className='bg-slate-800/95 backdrop-blur-xl border border-slate-600/60 rounded-2xl shadow-2xl w-full max-w-lg pointer-events-auto overflow-hidden relative'
+              className='bg-slate-700/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-lg pointer-events-auto overflow-hidden relative'
+              style={{
+                boxShadow:
+                  'inset 0 1px 2px rgba(0, 0, 0, 0.3), 0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+              }}
               onClick={e => e.stopPropagation()}
             >
               {/* Subtle glassy background */}
@@ -50,7 +54,7 @@ export function Modal ({ isOpen, onClose, children, title }: ModalProps) {
                     <h2 className='text-xl font-bold text-white'>{title}</h2>
                     <button
                       onClick={onClose}
-                      className='p-2 hover:bg-slate-700/80 rounded-lg transition-colors'
+                      className='p-2 hover:bg-slate-700/80 rounded-lg transition-colors cursor-pointer'
                     >
                       <X size={20} className='text-slate-400' />
                     </button>

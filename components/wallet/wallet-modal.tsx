@@ -67,7 +67,8 @@ export function WalletModal ({ isOpen, onClose }: WalletModalProps) {
           <button
             key={wallet.id}
             onClick={() => handleConnect(wallet.id)}
-            className='w-full flex items-center gap-4 p-4 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors border border-slate-600 hover:border-slate-500'
+            className='w-full flex items-center gap-4 p-4 bg-slate-600/70 hover:bg-slate-500/70 rounded-lg transition-colors cursor-pointer'
+            style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.3)' }}
           >
             <div className='text-2xl'>{wallet.icon}</div>
             <div className='flex-1 text-left'>
@@ -77,7 +78,10 @@ export function WalletModal ({ isOpen, onClose }: WalletModalProps) {
           </button>
         ))}
         {error && (
-          <div className='p-4 bg-red-900/30 border border-red-600 rounded-lg text-red-300 text-sm font-medium'>
+          <div
+            className='p-4 bg-red-900/40 rounded-lg text-red-300 text-sm font-medium'
+            style={{ boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.4)' }}
+          >
             {error}
           </div>
         )}

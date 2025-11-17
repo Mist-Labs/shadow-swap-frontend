@@ -33,7 +33,10 @@ export function Navbar () {
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
         <div className='flex items-center justify-between h-16'>
           {/* Logo */}
-          <Link href='/' className='flex items-center gap-3 group'>
+          <Link
+            href='/'
+            className='flex items-center gap-3 group cursor-pointer'
+          >
             <motion.div
               whileHover={{ rotate: 360, scale: 1.1 }}
               transition={{ duration: 0.5 }}
@@ -55,7 +58,11 @@ export function Navbar () {
               const isActive = pathname === item.href
               const Icon = item.icon
               return (
-                <Link key={item.href} href={item.href}>
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className='cursor-pointer'
+                >
                   <motion.div
                     whileHover={{ y: -2 }}
                     className='relative px-4 py-2 rounded-xl transition-colors'
@@ -97,7 +104,7 @@ export function Navbar () {
             <WalletButton />
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className='md:hidden p-2 rounded-xl hover:bg-slate-700 transition-colors text-slate-400'
+              className='md:hidden p-2 rounded-xl hover:bg-slate-700 transition-colors text-slate-400 cursor-pointer'
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -123,6 +130,7 @@ export function Navbar () {
                     key={item.href}
                     href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
+                    className='cursor-pointer'
                   >
                     <motion.div
                       whileHover={{ x: 4 }}
