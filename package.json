@@ -9,9 +9,14 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "framer-motion": "^12.23.24",
+    "get-starknet-core": "^3.3.5",
+    "lucide-react": "^0.554.0",
     "next": "16.0.3",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "starknet": "6.11.0",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -22,5 +27,6 @@
     "eslint-config-next": "16.0.3",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "packageManager": "pnpm@10.22.0+sha512.bf049efe995b28f527fd2b41ae0474ce29186f7edcb3bf545087bd61fbbebb2bf75362d1307fda09c2d288e1e499787ac12d4fcb617a974718a6051f2eee741c"
 }
