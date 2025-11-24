@@ -2,20 +2,42 @@
 
 import { motion } from 'framer-motion'
 import { Wallet, TrendingUp, History, Eye, EyeOff } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useWalletStore } from '@/lib/stores/wallet-store'
+import { useBalanceStore } from '@/lib/stores/balance-store'
+import { TOKENS } from '@/lib/constants/tokens'
 import { PageTransition } from '@/components/layout/page-transition'
 
 export default function PortfolioPage () {
-  const { isConnected, address } = useWalletStore()
+  const {
+    isStarknetConnected,
+    isZcashConnected,
+    starknetAddress,
+    zcashWallet
+  } = useWalletStore()
+  const { getFormattedBalance, fetchBalances } = useBalanceStore()
+  const isConnected = isStarknetConnected || isZcashConnected
   const [isPrivate, setIsPrivate] = useState(true)
 
-  const tokens = [
-    { symbol: 'ETH', amount: '2.45', value: '$5,234', change: '+5.2%' },
-    { symbol: 'USDC', amount: '12,450', value: '$12,450', change: '+0.1%' },
-    { symbol: 'STRK', amount: '8,234', value: '$3,456', change: '-2.3%' },
-    { symbol: 'ZEC', amount: '156', value: '$2,345', change: '+12.5%' }
-  ]
+  // Fetch balances when component mounts or wallet connects
+  useEffect(() => {
+    if (isConnected) {
+      fetchBalances()
+    }
+  }, [isConnected, fetchBalances])
+
+  // Get tokens with balances
+  const tokens = TOKENS.map(token => {
+    const amount = isConnected ? getFormattedBalance(token, 4) : '0'
+    // For now, value and change are placeholders - would need price API
+    return {
+      token,
+      symbol: token.symbol,
+      amount,
+      value: isPrivate ? '••••' : `$${parseFloat(amount) * 2000}`,
+      change: '+0.0%'
+    }
+  }).filter(t => parseFloat(t.amount) > 0 || !isConnected) // Show all if not connected, only non-zero if connected
 
   const transactions = [
     {
@@ -134,43 +156,53 @@ export default function PortfolioPage () {
           >
             <h2 className='text-2xl font-bold text-white mb-6'>Your Assets</h2>
             <div className='space-y-4'>
-              {tokens.map((token, index) => (
-                <motion.div
-                  key={token.symbol}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + index * 0.1 }}
-                  whileHover={{ x: 4 }}
-                  className='flex items-center justify-between p-4 bg-slate-600/50 rounded-xl hover:bg-slate-500/50 transition-colors cursor-pointer'
-                  style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.3)' }}
-                >
-                  <div className='flex items-center gap-4'>
-                    <div className='w-12 h-12 bg-linear-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center text-white font-bold'>
-                      {token.symbol[0]}
-                    </div>
-                    <div>
-                      <div className='font-bold text-white'>{token.symbol}</div>
-                      <div className='text-sm text-slate-400'>
-                        {isPrivate ? '•••' : token.amount}
+              {tokens.length === 0 ? (
+                <div className='text-center py-8 text-slate-400'>
+                  {isConnected
+                    ? 'No tokens found in your wallet'
+                    : 'Connect your wallet to view balances'}
+                </div>
+              ) : (
+                tokens.map((tokenData, index) => (
+                  <motion.div
+                    key={tokenData.token.address}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + index * 0.1 }}
+                    whileHover={{ x: 4 }}
+                    className='flex items-center justify-between p-4 bg-slate-600/50 rounded-xl hover:bg-slate-500/50 transition-colors cursor-pointer'
+                    style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.3)' }}
+                  >
+                    <div className='flex items-center gap-4'>
+                      <div className='w-12 h-12 bg-linear-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center text-white font-bold'>
+                        {tokenData.symbol[0]}
+                      </div>
+                      <div>
+                        <div className='font-bold text-white'>
+                          {tokenData.symbol}
+                        </div>
+                        <div className='text-sm text-slate-400'>
+                          {isPrivate ? '•••' : tokenData.amount}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className='text-right'>
-                    <div className='font-bold text-white'>
-                      {isPrivate ? '••••' : token.value}
+                    <div className='text-right'>
+                      <div className='font-bold text-white'>
+                        {isPrivate ? '••••' : tokenData.value}
+                      </div>
+                      <div
+                        className={`text-sm ${
+                          tokenData.change.startsWith('+')
+                            ? 'text-green-400'
+                            : 'text-red-400'
+                        }`}
+                      >
+                        {tokenData.change}
+                      </div>
                     </div>
-                    <div
-                      className={`text-sm ${
-                        token.change.startsWith('+')
-                          ? 'text-green-400'
-                          : 'text-red-400'
-                      }`}
-                    >
-                      {token.change}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))
+              )}
             </div>
           </motion.div>
 

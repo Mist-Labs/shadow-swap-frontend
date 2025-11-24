@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowDownUp, Settings, Zap } from 'lucide-react'
 import { useSwapStore } from '@/lib/stores/swap-store'
 import { useWalletStore } from '@/lib/stores/wallet-store'
+import { useBalanceStore } from '@/lib/stores/balance-store'
 import { TokenSelect } from './token-select'
 import { SettingsModal } from './settings-modal'
 import { DEFAULT_TOKEN_IN, DEFAULT_TOKEN_OUT } from '@/lib/constants/tokens'
@@ -28,12 +29,28 @@ export function SwapCard () {
     swapTokens
   } = useSwapStore()
 
-  const { isConnected } = useWalletStore()
+  const { isStarknetConnected, isZcashConnected } = useWalletStore()
+  const { getFormattedBalance, fetchBalances } = useBalanceStore()
+
+  // Check if the required wallet is connected based on swap direction
+  const isConnected =
+    tokenIn?.chain === 'starknet' || tokenOut?.chain === 'starknet'
+      ? isStarknetConnected
+      : tokenIn?.chain === 'zcash' || tokenOut?.chain === 'zcash'
+      ? isZcashConnected
+      : isStarknetConnected || isZcashConnected
 
   useEffect(() => {
     if (!tokenIn) setTokenIn(DEFAULT_TOKEN_IN)
     if (!tokenOut) setTokenOut(DEFAULT_TOKEN_OUT)
   }, [tokenIn, tokenOut, setTokenIn, setTokenOut])
+
+  // Fetch balances when wallet connects or tokens change
+  useEffect(() => {
+    if (isConnected) {
+      fetchBalances()
+    }
+  }, [isConnected, tokenIn, tokenOut, fetchBalances])
 
   const handleSwap = async () => {
     if (!isConnected || !tokenIn || !tokenOut || !amountIn) return
@@ -59,7 +76,7 @@ export function SwapCard () {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-      className='w-full max-w-lg mx-auto'
+      className='w-2/3 mx-auto'
     >
       <div
         className='relative bg-slate-700/80 backdrop-blur-xl rounded-3xl p-6 shadow-2xl overflow-visible'
@@ -123,18 +140,25 @@ export function SwapCard () {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  if (tokenIn && isConnected) {
+                    const balance = getFormattedBalance(tokenIn)
+                    setAmountIn(balance)
+                  }
+                }}
                 className='text-xs text-slate-400 hover:text-slate-300 bg-slate-800/60 px-2.5 py-1 rounded-lg transition-colors cursor-pointer'
                 style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.3)' }}
               >
-                Balance: 0.00
+                Balance:{' '}
+                {tokenIn && isConnected ? getFormattedBalance(tokenIn) : '0.00'}
               </motion.button>
             </div>
             <motion.div
               whileFocus={{ scale: 1.01 }}
-              className='relative bg-slate-800/60 rounded-2xl p-4 transition-all duration-300 z-0 backdrop-blur-sm'
+              className='relative bg-slate-800/60 rounded-2xl p-4 transition-all duration-300 backdrop-blur-sm overflow-visible'
               style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.4)' }}
             >
-              <div className='flex items-center justify-between mb-3 z-99999999999999999'>
+              <div className='flex items-center justify-between mb-3 relative z-[100]'>
                 <TokenSelect
                   token={tokenIn}
                   onSelect={setTokenIn}
@@ -143,6 +167,12 @@ export function SwapCard () {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    if (tokenIn && isConnected) {
+                      const balance = getFormattedBalance(tokenIn)
+                      setAmountIn(balance)
+                    }
+                  }}
                   className='px-3 py-1.5 bg-slate-700/80 hover:bg-slate-600/80 text-slate-200 text-xs font-semibold rounded-xl transition-all duration-200 cursor-pointer'
                   style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.3)' }}
                 >
@@ -195,15 +225,18 @@ export function SwapCard () {
                 className='text-xs text-slate-400 hover:text-slate-300 bg-slate-800/60 px-2.5 py-1 rounded-lg transition-colors cursor-pointer z-0'
                 style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.3)' }}
               >
-                Balance: 0.00
+                Balance:{' '}
+                {tokenOut && isConnected
+                  ? getFormattedBalance(tokenOut)
+                  : '0.00'}
               </motion.button>
             </div>
             <motion.div
               whileFocus={{ scale: 1.01 }}
-              className='relative bg-slate-800/60 rounded-2xl p-4 backdrop-blur-sm transition-all duration-300 z-0'
+              className='relative bg-slate-800/60 rounded-2xl p-4 backdrop-blur-sm transition-all duration-300 overflow-visible'
               style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.4)' }}
             >
-              <div className='flex items-center justify-between mb-3 z-0'>
+              <div className='flex items-center justify-between mb-3 relative z-[100]'>
                 <TokenSelect
                   token={tokenOut}
                   onSelect={setTokenOut}

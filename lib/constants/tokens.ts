@@ -1,8 +1,11 @@
+export type TokenChain = 'starknet' | 'zcash'
+
 export interface Token {
   address: string
   symbol: string
   name: string
   decimals: number
+  chain: TokenChain
   logoUrl?: string
   isPrivate?: boolean // For Zcash and privacy tokens
 }
@@ -15,6 +18,7 @@ export const TOKENS: Token[] = [
     symbol: 'ETH',
     name: 'Ethereum',
     decimals: 18,
+    chain: 'starknet',
     logoUrl: '/tokens/eth.svg'
   },
   {
@@ -23,6 +27,7 @@ export const TOKENS: Token[] = [
     symbol: 'USDC',
     name: 'USD Coin',
     decimals: 6,
+    chain: 'starknet',
     logoUrl: '/tokens/usdc.svg'
   },
   {
@@ -31,6 +36,7 @@ export const TOKENS: Token[] = [
     symbol: 'USDT',
     name: 'Tether USD',
     decimals: 6,
+    chain: 'starknet',
     logoUrl: '/tokens/usdt.svg'
   },
   {
@@ -39,6 +45,7 @@ export const TOKENS: Token[] = [
     symbol: 'STRK',
     name: 'Starknet Token',
     decimals: 18,
+    chain: 'starknet',
     logoUrl: '/tokens/strk.svg'
   },
   {
@@ -47,14 +54,15 @@ export const TOKENS: Token[] = [
     symbol: 'DAI',
     name: 'Dai Stablecoin',
     decimals: 18,
+    chain: 'starknet',
     logoUrl: '/tokens/dai.svg'
   },
   {
-    address:
-      '0x0000000000000000000000000000000000000000000000000000000000000001',
+    address: 'zs1...', // Zcash shielded address placeholder
     symbol: 'ZEC',
     name: 'Zcash',
     decimals: 8,
+    chain: 'zcash',
     isPrivate: true,
     logoUrl: '/tokens/zec.svg'
   }
