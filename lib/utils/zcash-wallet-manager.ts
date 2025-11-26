@@ -1,97 +1,73 @@
 /**
  * Zcash Wallet Manager
  * 
- * Manages WebZjs wallet instances to avoid creating new wallets for each transaction.
- * Reuses wallet instances and handles account management.
+ * Placeholder for managing WebWallet instances.
+ * This will be implemented once the local wallet is properly integrated.
  */
 
-import { initializeWebZjs } from './webzjs-init'
-
 interface WalletInstance {
-  wallet: any // WebWallet instance
-  network: 'main' | 'test'
+  wallet: any
   accountId: number | null
-  viewingKey: string
-  lightwalletdUrl: string
+  lastUsed: number
 }
 
-// Cache wallet instances by viewing key and network
-const walletCache = new Map<string, WalletInstance>()
+const walletCache: Map<string, WalletInstance> = new Map()
 
 /**
- * Get or create a WebWallet instance for a viewing key
+ * Get or create a WebWallet instance
+ * 
+ * TODO: Implement once WebZjs wallet is bundled
  */
 export async function getWalletInstance (
   viewingKey: string,
-  network: 'main' | 'test' = 'main'
+  network: 'main' | 'test'
 ): Promise<WalletInstance> {
-  const cacheKey = `${network}:${viewingKey}`
-  
-  if (walletCache.has(cacheKey)) {
-    return walletCache.get(cacheKey)!
-  }
-
-  await initializeWebZjs()
-  // Use files from .build directory - already built, no processing needed
-  const webzjs = await import(/* webpackIgnore: true */ '../../build/WebZjs/packages/webzjs-wallet/webzjs_wallet.js')
-  const { WebWallet } = webzjs
-
-  const lightwalletdUrl = network === 'main' 
-    ? 'https://zcash-mainnet.chainsafe.dev'
-    : 'https://zcash-testnet.chainsafe.dev'
-
-  const wallet = new WebWallet(network, lightwalletdUrl, 1) // min_confirmations = 1
-
-  // Import the viewing key as a view-only account
-  const accountId = await wallet.create_account_view_ufvk(
-    `swap-account-${Date.now()}`,
-    viewingKey,
-    null // birthday_height - null means scan from beginning
+  throw new Error(
+    'WebWallet instances are not yet available. ' +
+    'This feature requires the WebZjs wallet to be properly integrated.'
   )
-
-  const instance: WalletInstance = {
-    wallet,
-    network,
-    accountId,
-    viewingKey,
-    lightwalletdUrl
-  }
-
-  walletCache.set(cacheKey, instance)
-  return instance
 }
 
 /**
- * Clean up a wallet instance
+ * Cleanup a wallet instance
  */
 export function cleanupWalletInstance (
   viewingKey: string,
-  network: 'main' | 'test' = 'main'
+  network: 'main' | 'test'
 ): void {
-  const cacheKey = `${network}:${viewingKey}`
+  const cacheKey = `${viewingKey}-${network}`
   const instance = walletCache.get(cacheKey)
-  
-  if (instance) {
-    try {
-      instance.wallet.free()
-    } catch (error) {
-      console.warn('[Zcash] Error freeing wallet:', error)
-    }
+  if (instance && instance.wallet?.free) {
+    instance.wallet.free()
     walletCache.delete(cacheKey)
+    console.log('[WebZjs Wallet Manager] Cleaned up wallet instance.')
   }
 }
 
 /**
- * Clear all wallet instances
+ * Start periodic cleanup of old wallet instances
  */
-export function clearAllWalletInstances (): void {
-  for (const [key, instance] of walletCache.entries()) {
-    try {
-      instance.wallet.free()
-    } catch (error) {
-      console.warn('[Zcash] Error freeing wallet:', error)
-    }
+export function startWalletCleanupInterval (intervalMs: number = 5 * 60 * 1000): void {
+  if (typeof window === 'undefined') {
+    return
   }
-  walletCache.clear()
+
+  setInterval(() => {
+    const now = Date.now()
+    const thirtyMinutes = 30 * 60 * 1000
+    for (const [key, instance] of walletCache.entries()) {
+      if (now - instance.lastUsed > thirtyMinutes) {
+        if (instance.wallet?.free) {
+          instance.wallet.free()
+        }
+        walletCache.delete(key)
+        console.log('[WebZjs Wallet Manager] Auto-cleaned up old wallet instance.')
+      }
+    }
+  }, intervalMs)
 }
 
+// Start cleanup when module is loaded (browser only)
+if (typeof window !== 'undefined') {
+  startWalletCleanupInterval()
+}

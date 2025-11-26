@@ -22,6 +22,8 @@ out
 # Production
 /build
 dist
+.build
+lib/webzjs-wallet
 
 # Misc
 .DS_Store

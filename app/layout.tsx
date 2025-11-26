@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
+import React from 'react'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Navbar } from '@/components/layout/navbar'
 
 const inter = Inter({
-  variable: '--font-inter',
   subsets: ['latin'],
-  display: 'swap'
+  display: 'swap',
+  variable: '--font-inter'
 })
 
 export const metadata: Metadata = {
