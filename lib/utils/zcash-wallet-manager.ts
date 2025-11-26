@@ -33,7 +33,7 @@ export async function getWalletInstance (
 
   await initializeWebZjs()
   // Use files from .build directory - already built, no processing needed
-  const webzjs = await import(/* webpackIgnore: true */ '../../.build/WebZjs/packages/webzjs-wallet/webzjs_wallet.js')
+  const webzjs = await import(/* webpackIgnore: true */ '../../build/WebZjs/packages/webzjs-wallet/webzjs_wallet.js')
   const { WebWallet } = webzjs
 
   const lightwalletdUrl = network === 'main' 

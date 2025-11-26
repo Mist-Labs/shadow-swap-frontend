@@ -368,7 +368,7 @@ async function proveZcashTransaction (
   try {
     await initializeWebZjs()
     // Use files from .build directory - already built, no processing needed
-    const webzjs = await import(/* webpackIgnore: true */ '../../.build/WebZjs/packages/webzjs-wallet/webzjs_wallet.js')
+    const webzjs = await import(/* webpackIgnore: true */ '../../build/WebZjs/packages/webzjs-wallet/webzjs_wallet.js')
     const { Pczt } = webzjs
 
     // Validate hex string
@@ -437,7 +437,7 @@ async function broadcastZcashTransaction (
   try {
     await initializeWebZjs()
     // Use files from .build directory - already built, no processing needed
-    const webzjs = await import(/* webpackIgnore: true */ '../../.build/WebZjs/packages/webzjs-wallet/webzjs_wallet.js')
+    const webzjs = await import(/* webpackIgnore: true */ '../../build/WebZjs/packages/webzjs-wallet/webzjs_wallet.js')
     const { Pczt } = webzjs
 
     // Validate hex string

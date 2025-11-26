@@ -33,7 +33,7 @@ export async function initializeWebZjs (): Promise<void> {
       const webzjsModule = await import(
         /* webpackIgnore: true */
         /* @ts-ignore */
-        '../../.build/WebZjs/packages/webzjs-wallet/webzjs_wallet.js'
+        '../../build/WebZjs/packages/webzjs-wallet/webzjs_wallet.js'
       )
       
       // Initialize WASM module
