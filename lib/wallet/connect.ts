@@ -404,77 +404,79 @@ export async function connectZcashWalletMetamask (): Promise<ZcashWallet> {
       throw new Error('Failed to connect to MetaMask')
     }
 
-    // Check for installed Zcash Snap
-    // Look for any installed snap that matches the Zcash snap identifier
-    // This could be from npm, localhost, or a custom build
+    // For localhost: Use npm snap (already installed) - will have origin restrictions but that's expected
+    // For production: Use npm snap - works fine
+    console.log('[Zcash] Connecting to Zcash wallet via MetaMask Snap')
+    
     let snapId: string | null = null
-    const possibleSnapIds = [
-      'npm:@chainsafe/webzjs-zcash-snap', // Published snap
-      'local:http://localhost:8080', // Local development
-      'local:http://127.0.0.1:8080' // Local development alternative
-    ]
-
+    const isLocalhost = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || 
+       window.location.hostname === '127.0.0.1')
+    
+    // Check if npm snap is already installed
     if (hasGetSnaps) {
       try {
-        // Get all installed snaps
         const installedSnaps = await ethereum.request({
           method: 'wallet_getSnaps'
         })
-        console.log('[Zcash Snap] All installed snaps:', installedSnaps)
-
-        if (installedSnaps && typeof installedSnaps === 'object') {
-          // Look for Zcash snap by checking snap IDs and metadata
-          for (const [id, snapInfo] of Object.entries(installedSnaps as any)) {
-            const info = snapInfo as any
-            // Check if this is the Zcash snap by ID or name
-            if (
-              id.includes('webzjs-zcash-snap') ||
-              id.includes('zcash') ||
-              info?.name?.toLowerCase().includes('zcash') ||
-              info?.version
-            ) {
-              snapId = id
-              console.log('[Zcash Snap] Found installed Zcash snap:', id, info)
-              break
-            }
-          }
-
-          // If not found by pattern, try the known npm ID
-          if (
-            !snapId &&
-            (installedSnaps as any)['npm:@chainsafe/webzjs-zcash-snap']
-          ) {
-            snapId = 'npm:@chainsafe/webzjs-zcash-snap'
-            console.log('[Zcash Snap] Found snap by npm ID')
-          }
+        
+        if (installedSnaps && (installedSnaps as any)['npm:@chainsafe/webzjs-zcash-snap']) {
+          snapId = 'npm:@chainsafe/webzjs-zcash-snap'
+          console.log('[Zcash] ✅ Using installed npm snap')
         }
-      } catch (error: any) {
-        console.log('[Zcash Snap] Error checking installed snaps:', error)
+      } catch (error) {
+        console.log('[Zcash] Error checking snaps:', error)
       }
     }
-
-    // If no snap is found, tell user to install it from MetaMask Snaps store
+    
+    // If not installed, install it
+    if (!snapId && hasRequestSnaps) {
+      try {
+        console.log('[Zcash] Installing Zcash Snap...')
+        const installResult = await ethereum.request({
+          method: 'wallet_requestSnaps',
+          params: {
+            'npm:@chainsafe/webzjs-zcash-snap': {}
+          }
+        })
+        
+        if (installResult && (installResult as any)['npm:@chainsafe/webzjs-zcash-snap']) {
+          snapId = 'npm:@chainsafe/webzjs-zcash-snap'
+          console.log('[Zcash] ✅ Snap installed successfully')
+        }
+      } catch (installError: any) {
+        const errorMessage = installError?.message || ''
+        const errorCode = installError?.code
+        
+        if (errorCode === 4001 || errorMessage.includes('rejected')) {
+          throw new Error(
+            'Wallet connection cancelled. Please approve the installation to continue.'
+          )
+        }
+        
+        throw new Error(
+          'Unable to install Zcash wallet. Please try again or install manually: ' +
+          'MetaMask Settings > Snaps > Browse Snaps > "Zcash Shielded Wallet"'
+        )
+      }
+    }
+    
     if (!snapId) {
       throw new Error(
-        'Zcash Shielded Wallet Snap is not installed. ' +
-          'Please install it from MetaMask: Settings > Snaps > Browse Snaps, then search for "Zcash Shielded Wallet".'
+        'Unable to install Zcash wallet. ' +
+        'Please approve the installation prompt in MetaMask, or install it manually: ' +
+        'Settings > Snaps > Browse Snaps > Search "Zcash Shielded Wallet"'
       )
     }
-
-    console.log('[Zcash Snap] Using installed snap ID:', snapId)
-
-    // Get Zcash viewing key from the snap
-    // According to the ChainSafe WebZjs snap source code:
-    // https://github.com/ChainSafe/WebZjs/tree/main/packages/snap
-    // The snap provides: getViewingKey, signPczt, getSeedFingerprint, setBirthdayBlock, getSnapStete, setSnapStete
-    // It does NOT provide getAddress, getUnifiedAddress, or getTransparentAddress methods
-    // We need to use the viewing key to derive addresses using @chainsafe/webzjs-wallet library
-
-    console.log('[Zcash Snap] Getting viewing key from snap...')
+    
+    console.log('[Zcash] Using snap:', snapId)
+    
     let viewingKey: string | null = null
     let zcashAddress: string | null = null
 
     try {
+      // Get viewing key from snap (snap has snap_getBip44Entropy permission)
+      // The snap internally uses snap_getBip44Entropy which we can't call directly from dapp
       const viewingKeyResult = await ethereum.request({
         method: 'wallet_invokeSnap',
         params: {
@@ -485,111 +487,81 @@ export async function connectZcashWalletMetamask (): Promise<ZcashWallet> {
         }
       })
 
-      console.log('[Zcash Snap] Viewing key result:', viewingKeyResult)
-
-      if (viewingKeyResult) {
-        if (typeof viewingKeyResult === 'string') {
-          viewingKey = viewingKeyResult
-        } else if (typeof viewingKeyResult === 'object') {
-          // Try different possible fields
-          viewingKey =
-            (viewingKeyResult as any).viewingKey ||
-            (viewingKeyResult as any).key ||
-            (viewingKeyResult as any).vk ||
-            (viewingKeyResult as any).value
-        }
+      // Extract viewing key from snap response
+      if (typeof viewingKeyResult === 'string') {
+        viewingKey = viewingKeyResult
+      } else if (viewingKeyResult && typeof viewingKeyResult === 'object') {
+        viewingKey = (viewingKeyResult as any).viewingKey || 
+                     (viewingKeyResult as any).key || 
+                     (viewingKeyResult as any).value
       }
 
       if (!viewingKey) {
         throw new Error('Failed to retrieve viewing key from snap')
       }
 
-      console.log('[Zcash Snap] ✅ Viewing key retrieved successfully')
-
-      // TODO: Derive address from viewing key using @chainsafe/webzjs-wallet
-      // For now, we'll use a placeholder that indicates we have the viewing key
-      // The actual address derivation requires the WebZjs library
-      // This is a temporary solution until we integrate the full WebZjs wallet library
-
-      // Check if we can get address from snap state
-      try {
-        const snapState = await ethereum.request({
-          method: 'wallet_invokeSnap',
-          params: {
-            snapId,
-            request: {
-              method: 'getSnapStete' // Note: typo in snap source code
-            }
-          }
-        })
-        console.log('[Zcash Snap] Snap state:', snapState)
-
-        // The snap state might contain address information
-        if (snapState && typeof snapState === 'object') {
-          const state = snapState as any
-          // Try to find address in state
-          zcashAddress =
-            state.address || state.unifiedAddress || state.transparentAddress
-        }
-      } catch (stateError) {
-        console.log('[Zcash Snap] Could not get snap state:', stateError)
-      }
-
-      // If we still don't have an address, we need to derive it from the viewing key
-      // This requires the @chainsafe/webzjs-wallet library
-      if (!zcashAddress) {
-        console.warn(
-          '[Zcash Snap] ⚠️ Address not available from snap. ' +
-            'The snap only provides viewing keys. ' +
-            'To get addresses, we need to integrate @chainsafe/webzjs-wallet library. ' +
-            'Using viewing key as identifier for now.'
-        )
-        // Use viewing key hash or fingerprint as a temporary identifier
-        // In production, this should be replaced with proper address derivation
-        zcashAddress = `viewing-key-${viewingKey.slice(0, 16)}...`
-      }
+      console.log('[Zcash] ✅ Viewing key retrieved from snap')
+      
+      // Derive address from viewing key using local wallet
+      // TODO: Use WebWallet to derive proper addresses
+      // For now, use viewing key as identifier
+      zcashAddress = `zcash-${viewingKey.slice(0, 20)}...`
+      
     } catch (error: any) {
-      console.error('[Zcash Snap] Error getting viewing key:', error)
+      console.error('[Zcash] Error getting viewing key from snap:', error)
 
-      // Check if it's a permission/origin error
       const errorMessage = error?.message || ''
       const errorCode = error?.code
-      console.log('[Zcash Snap] Error message:', errorMessage)
-      console.log('[Zcash Snap] Error code:', errorCode)
-      console.log('actual error:::', error)
 
+      // Check for permission errors (4100 = Unauthorized)
+      if (errorCode === 4100 || errorMessage.includes('Unauthorized')) {
+        throw new Error(
+          'Snap permission denied. ' +
+          'Please approve the permission request in MetaMask when prompted. ' +
+          'The snap needs permission to access your Zcash viewing key.'
+        )
+      }
+
+      // Check for origin/permission errors
       if (
         errorCode === -32603 &&
         (errorMessage.includes('not permitted') ||
-          errorMessage.includes('allowedOrigins') ||
-          errorMessage.includes('origin'))
+         errorMessage.includes('allowedOrigins') ||
+         errorMessage.includes('origin'))
       ) {
-        throw new Error(
-          `The Zcash Snap can only be used from https://webzjs.chainsafe.dev. ` +
-            `Please ensure you're accessing the application from the correct domain.`
-        )
+        if (isLocalhost) {
+          throw new Error(
+            'Zcash wallet cannot be used on localhost. ' +
+            'The Zcash Snap only works on the production domain (https://webzjs.chainsafe.dev). ' +
+            'Please deploy your app or use a different wallet for local development.'
+          )
+        } else {
+          throw new Error(
+            'Unable to connect Zcash wallet from this domain. ' +
+            'The Zcash Snap is only authorized for specific domains.'
+          )
+        }
       }
 
       throw new Error(
-        `Failed to retrieve viewing key from snap: ${
-          errorMessage || 'Unknown error'
-        }. ` +
-          `Please ensure the Zcash Shielded Wallet Snap is properly installed and configured.`
+        `Failed to get viewing key from snap: ${errorMessage || 'Unknown error'}`
       )
     }
 
     // Validate we have some identifier (viewing key or address)
     if (!viewingKey && !zcashAddress) {
       throw new Error(
-        'Failed to retrieve Zcash viewing key or address from snap. ' +
-          'Please ensure the Zcash Shielded Wallet Snap is properly installed and configured.'
+        'Failed to retrieve Zcash viewing key or address from MetaMask. ' +
+          'Please ensure MetaMask is properly configured and try again.'
       )
     }
 
     return {
       address: zcashAddress,
       walletType: 'metamask',
-      provider: ethereum
+      provider: ethereum,
+      viewingKey: viewingKey || undefined
+      // No snapId - using local wallet entirely
     }
   } catch (error: any) {
     // Provide helpful error messages

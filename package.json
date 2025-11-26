@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:snap": "bash scripts/build-snap.sh",
+    "prebuild": "bash scripts/build-snap.sh",
     "start": "next start",
     "lint": "eslint"
   },
@@ -15,6 +17,7 @@
     "next": "16.0.3",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "root": "github:ChainSafe/WebZjs#main",
     "starknet": "6.11.0",
     "zustand": "^5.0.8"
   },

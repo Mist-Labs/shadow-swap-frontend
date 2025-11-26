@@ -26,6 +26,9 @@ importers:
       react-dom:
         specifier: 19.2.0
         version: 19.2.0(react@19.2.0)
+      root:
+        specifier: github:ChainSafe/WebZjs#main
+        version: https://codeload.github.com/ChainSafe/WebZjs/tar.gz/45972b3056ba2138782f5b5b0f1768469940971d
       starknet:
         specifier: 6.11.0
         version: 6.11.0
@@ -1814,6 +1817,11 @@ packages:
   reusify@1.1.0:
     resolution: {integrity: sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw==}
     engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
+
+  root@https://codeload.github.com/ChainSafe/WebZjs/tar.gz/45972b3056ba2138782f5b5b0f1768469940971d:
+    resolution: {tarball: https://codeload.github.com/ChainSafe/WebZjs/tar.gz/45972b3056ba2138782f5b5b0f1768469940971d}
+    version: 0.0.0
+    engines: {node: '>=18.18.0'}
 
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
@@ -4014,6 +4022,8 @@ snapshots:
       supports-preserve-symlinks-flag: 1.0.0
 
   reusify@1.1.0: {}
+
+  root@https://codeload.github.com/ChainSafe/WebZjs/tar.gz/45972b3056ba2138782f5b5b0f1768469940971d: {}
 
   run-parallel@1.2.0:
     dependencies:

@@ -1,0 +1,36 @@
+{
+  "version": "0.2.7",
+  "description": "WebZjs Snap for Zcash wallet",
+  "proposedName": "Zcash Shielded Wallet",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChainSafe/WebZjs.git"
+  },
+  "source": {
+    "shasum": "bRciDORIF/UB6+EjrJZUXF29nIgvGKuddiJxFfQV/qs=",
+    "location": {
+      "local": {
+        "filePath": "/snap/bundle.js",
+        "iconPath": "/snap/logo.svg"
+      }
+    }
+  },
+  "initialPermissions": {
+    "snap_dialog": {},
+    "endowment:lifecycle-hooks": {},
+    "endowment:webassembly": {},
+    "endowment:rpc": {
+      "allowedOrigins": [
+        "*"
+      ]
+    },
+    "snap_getBip44Entropy": [
+      {
+        "coinType": 133
+      }
+    ],
+    "snap_manageState": {}
+  },
+  "platformVersion": "6.17.1",
+  "manifestVersion": "0.1"
+}

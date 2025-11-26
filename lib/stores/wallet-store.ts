@@ -14,6 +14,8 @@ export interface ZcashWallet {
   address: string // Shielded or transparent address
   walletType: ZcashWalletType
   provider: any // Wallet provider instance
+  viewingKey?: string // Viewing key from snap (for transaction building)
+  snapId?: string // The installed snap ID
 }
 
 interface WalletState {
