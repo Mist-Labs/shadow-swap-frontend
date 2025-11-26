@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:snap": "bash scripts/build-snap.sh",
     "prebuild": "bash scripts/build-snap.sh",
     "start": "next start",
     "lint": "eslint"
