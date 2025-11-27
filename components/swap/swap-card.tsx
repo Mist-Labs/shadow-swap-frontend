@@ -32,13 +32,12 @@ export function SwapCard () {
   const { isStarknetConnected, isZcashConnected } = useWalletStore()
   const { getFormattedBalance, fetchBalances } = useBalanceStore()
 
-  // Check if the required wallet is connected based on swap direction
-  const isConnected =
-    tokenIn?.chain === 'starknet' || tokenOut?.chain === 'starknet'
-      ? isStarknetConnected
-      : tokenIn?.chain === 'zcash' || tokenOut?.chain === 'zcash'
-      ? isZcashConnected
-      : isStarknetConnected || isZcashConnected
+  // Swap page is Starknet-only (STRK ↔ VEIL)
+  // Filter out non-Starknet tokens
+  const isValidSwap = tokenIn?.chain === 'starknet' && tokenOut?.chain === 'starknet'
+  
+  // Only need Starknet wallet for swaps
+  const isConnected = isStarknetConnected
 
   useEffect(() => {
     if (!tokenIn) setTokenIn(DEFAULT_TOKEN_IN)
@@ -54,8 +53,13 @@ export function SwapCard () {
 
   const handleSwap = async () => {
     if (!isConnected || !tokenIn || !tokenOut || !amountIn) return
-    // Swap logic will be implemented here
-    console.log('Swap:', { tokenIn, tokenOut, amountIn })
+    
+    try {
+      await swapTokens()
+    } catch (error) {
+      console.error('[SwapCard] Swap failed:', error)
+      // Error is already handled in the store
+    }
   }
 
   const handleFlipTokens = () => {
@@ -69,7 +73,7 @@ export function SwapCard () {
     setTimeout(() => setIsFlipping(false), 300)
   }
 
-  const canSwap = isConnected && tokenIn && tokenOut && amountIn && !isSwapping
+  const canSwap = isConnected && isValidSwap && tokenIn && tokenOut && amountIn && !isSwapping
 
   return (
     <motion.div
@@ -137,6 +141,11 @@ export function SwapCard () {
           >
             <div className='flex items-center justify-between mb-2'>
               <label className='text-sm font-medium text-slate-300'>From</label>
+              {tokenIn && (
+                <span className='text-xs text-slate-300 bg-slate-700/60 px-2 py-1 rounded-md mr-2'>
+                  {tokenIn.chain === 'starknet' ? '◈ Starknet' : 'Ⓩ Zcash'}
+                </span>
+              )}
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -146,7 +155,7 @@ export function SwapCard () {
                     setAmountIn(balance)
                   }
                 }}
-                className='text-xs text-slate-400 hover:text-slate-300 bg-slate-800/60 px-2.5 py-1 rounded-lg transition-colors cursor-pointer'
+                className='text-xs text-slate-200 hover:text-white bg-slate-800/60 px-2.5 py-1 rounded-lg transition-colors cursor-pointer'
                 style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.3)' }}
               >
                 Balance:{' '}
@@ -219,6 +228,11 @@ export function SwapCard () {
           >
             <div className='flex items-center justify-between mb-2'>
               <label className='text-sm font-medium text-slate-300'>To</label>
+              {tokenOut && (
+                <span className='text-xs text-slate-300 bg-slate-700/60 px-2 py-1 rounded-md mr-2'>
+                  {tokenOut.chain === 'starknet' ? '◈ Starknet' : 'Ⓩ Zcash'}
+                </span>
+              )}
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -271,13 +285,13 @@ export function SwapCard () {
                 >
                   <div className='grid grid-cols-2 gap-3 text-xs'>
                     <div>
-                      <span className='text-slate-400 block mb-1'>Rate</span>
+                      <span className='text-slate-200 block mb-1'>Rate</span>
                       <div className='font-semibold text-white'>
                         1 ETH = 3,200 USDC
                       </div>
                     </div>
                     <div>
-                      <span className='text-slate-400 block mb-1'>
+                      <span className='text-slate-200 block mb-1'>
                         Slippage
                       </span>
                       <div className='font-semibold text-white'>
@@ -285,13 +299,13 @@ export function SwapCard () {
                       </div>
                     </div>
                     <div>
-                      <span className='text-slate-400 block mb-1'>
+                      <span className='text-slate-200 block mb-1'>
                         Network Fee
                       </span>
                       <div className='font-semibold text-white'>~$0.50</div>
                     </div>
                     <div>
-                      <span className='text-slate-400 block mb-1'>
+                      <span className='text-slate-200 block mb-1'>
                         Price Impact
                       </span>
                       <div className='font-semibold text-green-400'>~0.01%</div>
@@ -301,6 +315,32 @@ export function SwapCard () {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Invalid swap warning */}
+          {!isValidSwap && tokenIn && tokenOut && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className='mb-4 p-3 bg-orange-500/10 border border-orange-500/30 rounded-xl'
+            >
+              <p className='text-xs text-orange-200'>
+                ⚠️ Cross-chain swaps not available here. Use the <a href='/bridge' className='text-indigo-400 hover:text-indigo-300 underline'>Bridge page</a> for STRK/VEIL ↔ ZEC!
+              </p>
+            </motion.div>
+          )}
+
+          {/* Wallet connection status */}
+          {!isConnected && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className='mb-4 p-3 bg-orange-500/10 border border-orange-500/30 rounded-xl'
+            >
+              <p className='text-xs text-orange-200'>
+                ⚠️ Connect your Starknet wallet to swap
+              </p>
+            </motion.div>
+          )}
 
           {/* Swap Button */}
           <motion.button
@@ -329,7 +369,9 @@ export function SwapCard () {
             )}
             <span className='relative z-10 flex items-center justify-center gap-2'>
               {!isConnected ? (
-                'Connect Wallet'
+                'Connect Starknet Wallet'
+              ) : !isValidSwap && tokenIn && tokenOut ? (
+                'Use Bridge for Cross-Chain'
               ) : isSwapping ? (
                 <>
                   <motion.div

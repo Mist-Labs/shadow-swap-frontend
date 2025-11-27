@@ -106,13 +106,13 @@ export default function AnalyticsPage () {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className='bg-white/90 backdrop-blur-sm rounded-2xl p-8 border border-indigo-100 shadow-lg'
+            className='bg-slate-800/90 backdrop-blur-sm rounded-2xl p-8 border border-slate-700 shadow-lg'
           >
-            <h2 className='text-2xl font-bold text-slate-900 mb-6'>
+            <h2 className='text-2xl font-bold text-white mb-6'>
               Volume Over Time
             </h2>
-            <div className='h-64 bg-linear-to-br from-indigo-50 to-violet-50 rounded-xl flex items-center justify-center border-2 border-dashed border-indigo-200'>
-              <p className='text-slate-500'>Chart visualization coming soon</p>
+            <div className='h-64 bg-linear-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center border-2 border-dashed border-slate-600'>
+              <p className='text-slate-300'>Chart visualization coming soon</p>
             </div>
           </motion.div>
         </div>

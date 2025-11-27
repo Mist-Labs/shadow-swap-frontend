@@ -173,8 +173,8 @@ export function WalletModal ({ isOpen, onClose }: WalletModalProps) {
             onClick={() => setActiveTab('starknet')}
             className={`px-4 py-2 font-medium transition-colors ${
               activeTab === 'starknet'
-                ? 'text-blue-400 border-b-2 border-blue-400'
-                : 'text-slate-400 hover:text-slate-300'
+                ? 'text-indigo-400 border-b-2 border-indigo-400'
+                : 'text-slate-300 hover:text-white'
             }`}
           >
             Starknet {isStarknetConnected && '✓'}
@@ -183,8 +183,8 @@ export function WalletModal ({ isOpen, onClose }: WalletModalProps) {
             onClick={() => setActiveTab('zcash')}
             className={`px-4 py-2 font-medium transition-colors ${
               activeTab === 'zcash'
-                ? 'text-blue-400 border-b-2 border-blue-400'
-                : 'text-slate-400 hover:text-slate-300'
+                ? 'text-indigo-400 border-b-2 border-indigo-400'
+                : 'text-slate-300 hover:text-white'
             }`}
           >
             Zcash {isZcashConnected && '✓'}
@@ -195,7 +195,7 @@ export function WalletModal ({ isOpen, onClose }: WalletModalProps) {
         <div className='space-y-3'>
           {activeTab === 'starknet' && (
             <>
-              <p className='text-sm text-slate-400 mb-2'>
+              <p className='text-sm text-slate-200 mb-2'>
                 Connect your Starknet wallet for swaps
               </p>
               {starknetWallets.map(wallet => {
@@ -219,7 +219,7 @@ export function WalletModal ({ isOpen, onClose }: WalletModalProps) {
                       <div className='font-semibold text-white'>
                         {wallet.name}
                       </div>
-                      <div className='text-sm text-slate-400'>
+                      <div className='text-sm text-slate-300'>
                         {wallet.description}
                       </div>
                     </div>
@@ -236,7 +236,16 @@ export function WalletModal ({ isOpen, onClose }: WalletModalProps) {
 
           {activeTab === 'zcash' && (
             <>
-              <p className='text-sm text-slate-400 mb-2'>
+              <div className='mb-4 p-4 bg-orange-500/20 border border-orange-500/50 rounded-lg text-center'>
+                <p className='text-lg text-orange-200 font-semibold mb-2'>
+                  🚧 Zcash Integration Coming Soon
+                </p>
+                <p className='text-sm text-orange-100'>
+                  We're working on bringing Zcash cross-chain swaps to Shadow Swap. 
+                  For now, enjoy fast and private swaps on Starknet!
+                </p>
+              </div>
+              <p className='text-sm text-slate-300 mb-2 opacity-70'>
                 Connect your Zcash wallet for cross-chain swaps
               </p>
               {zcashWallets.map(wallet => {
@@ -248,7 +257,7 @@ export function WalletModal ({ isOpen, onClose }: WalletModalProps) {
                   <button
                     key={wallet.id}
                     onClick={() => handleConnectZcash(wallet.id)}
-                    disabled={!isInstalled}
+                    disabled={true}
                     className={`w-full flex items-center gap-4 p-4 rounded-lg transition-colors cursor-pointer relative ${
                       isInstalled
                         ? 'bg-slate-600/70 hover:bg-slate-500/70'
@@ -271,7 +280,7 @@ export function WalletModal ({ isOpen, onClose }: WalletModalProps) {
                           </span>
                         )}
                       </div>
-                      <div className='text-sm text-slate-400'>
+                      <div className='text-sm text-slate-300'>
                         {wallet.description}
                       </div>
                     </div>

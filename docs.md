@@ -1,4 +1,12 @@
 Shadow Swap Relayer API Documentation
+DEPLOYED SMART CONTRACTS
+FastPool: 0x01749627bb08da4f8c3df6c55045ac429abdceada025262d4c51430d643db84e
+StandardPool: 0x05cf3a281b3932cb4fec5648558c05fe796bd2d1b6e75554e3306c4849b82ed8
+SUPPORTED TOKENS
+VeilToken: 0x02e90f89aecddf3f6b15bd52286a33c743b684fa8c17ed1d7ae57713a81459e1
+Strk: 
+0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d
+
 Base URL: http://localhost:8080 (or configured server)
 Authentication: HMAC-SHA256 signatures required for all POST endpoints
 
@@ -61,7 +69,7 @@ ZEC amount as decimal string
 
 Important Notes:
 For starknet_to_zcash:
-User MUST call pool.deposit(token, commitment, amount) on Starknet FIRST
+User MUST approve smart contract to spend swap amount, then call pool.deposit(token, commitment, amount) on Starknet FIRST (the two calls can be batched on Starknet as one transaction)
 Wait for deposit transaction confirmation
 Then call /swap/initiate with the same commitment
 Relayer verifies commitment exists in pool before proceeding
@@ -115,7 +123,7 @@ htlc_created - HTLC detected on chain
   "chain": "starknet | zcash",
   "transaction_hash": "0x...",
   "commitment": "0x...",
-  "nullifier": "0x..." // Starknet only
+  "nullifier": "0x...", // Starknet only
   "hash_lock": "...",
   "timestamp": 1234567890
 }
@@ -127,7 +135,7 @@ htlc_redeemed - Secret revealed
   "transaction_hash": "0x...",
   "commitment": "0x...",
   "hash_lock": "...",
-  "secret": "0x..." // The revealed secret!
+  "secret": "0x...", // The revealed secret!
   "timestamp": 1234567890
 }
 
@@ -234,19 +242,110 @@ Response (200 OK):
 }
 
 
+8. Get Price
+Endpoint: GET /price
+Purpose: Get current exchange rate between two currencies
+Query Parameters:
+from_symbol - Source currency (STRK, ZEC)
+to_symbol - Target currency (STRK, ZEC, USD)
+amount - Optional amount to convert
+Example: GET /price?from_symbol=STRK&to_symbol=ZEC&amount=100
+Response (200 OK):
+{
+  "from_symbol": "STRK",
+  "to_symbol": "ZEC",
+  "rate": 0.024,
+  "amount": 100.0,
+  "converted_amount": 2.4,
+  "timestamp": 1234567890,
+  "sources": [
+    {
+      "source": "CryptoCompare",
+      "price": 0.024
+    },
+    {
+      "source": "CoinGecko",
+      "price": 0.025
+    }
+  ]
+}
+
+Response (404 Not Found):
+{
+  "error": "Price feed not found",
+  "pair": "STRK-BTC",
+  "available_pairs": ["STRK-ZEC", "ZEC-STRK", "STRK-USD", "ZEC-USD"]
+}
+
+Response (503 Service Unavailable):
+{
+  "error": "Price data not yet available",
+  "pair": "STRK-ZEC"
+}
+
+
+9. Get All Prices
+Endpoint: GET /prices/all
+Purpose: Get all available exchange rates at once
+Response (200 OK):
+{
+  "strk_to_zec": 0.024,
+  "zec_to_strk": 41.67,
+  "strk_to_usd": 0.52,
+  "zec_to_usd": 21.50,
+  "timestamp": 1234567890
+}
+
+
+10. Convert Amount
+Endpoint: POST /price/convert
+Purpose: Convert amount between two currencies
+Request Body:
+{
+  "from_symbol": "STRK",
+  "to_symbol": "ZEC",
+  "amount": 1000.0
+}
+
+Response (200 OK):
+{
+  "from_symbol": "STRK",
+  "to_symbol": "ZEC",
+  "input_amount": 1000.0,
+  "output_amount": 24.0,
+  "rate": 0.024,
+  "timestamp": 1234567890
+}
+
+Response (404 Not Found):
+{
+  "error": "Price feed not found",
+  "pair": "STRK-BTC"
+}
+
+Response (503 Service Unavailable):
+{
+  "error": "Failed to get exchange rate: No valid price data available"
+}
+
+
 Frontend Integration Flow
 Starknet → Zcash Swap
-// 1. Generate privacy parameters
+// 1. Get current exchange rate
+const priceResponse = await fetch('/price?from_symbol=STRK&to_symbol=ZEC&amount=1000');
+const { rate, converted_amount } = await priceResponse.json();
+
+// 2. Generate privacy parameters
 const secret = generateRandom32Bytes();
 const blinding = generateRandom32Bytes();
 const commitment = PoseidonHash(amount, blinding);
 const hash_lock = SHA256(secret);
 
-// 2. Deposit to pool
+// 3. Deposit to pool
 await pool.deposit(token, commitment, amount);
 // Wait for confirmation...
 
-// 3. Initiate swap with relayer
+// 4. Initiate swap with relayer
 const response = await fetch('/swap/initiate', {
   method: 'POST',
   headers: {
@@ -260,24 +359,28 @@ const response = await fetch('/swap/initiate', {
     commitment: commitment,
     hash_lock: hash_lock,
     starknet_amount: amount,
-    zcash_amount: zcashAmount
+    zcash_amount: converted_amount.toString()
   })
 });
 
 const { swap_id } = await response.json();
 
-// 4. Monitor swap status
+// 5. Monitor swap status
 const status = await fetch(`/swap/${swap_id}`);
 
-// 5. When secret revealed, redeem on Starknet
+// 6. When secret revealed, redeem on Starknet
 // (Relayer handles Zcash redemption automatically)
 
 Zcash → Starknet Swap
-// 1. Generate privacy parameters
+// 1. Get current exchange rate
+const priceResponse = await fetch('/price?from_symbol=ZEC&to_symbol=STRK&amount=1.0');
+const { rate, converted_amount } = await priceResponse.json();
+
+// 2. Generate privacy parameters
 const secret = generateRandom32Bytes();
 const hash_lock = SHA256(secret);
 
-// 2. Initiate swap with relayer
+// 3. Initiate swap with relayer
 const response = await fetch('/swap/initiate', {
   method: 'POST',
   headers: {
@@ -290,18 +393,24 @@ const response = await fetch('/swap/initiate', {
     swap_direction: 'zcash_to_starknet',
     commitment: '0x0', // Not used for Zcash → Starknet
     hash_lock: hash_lock,
-    starknet_amount: amount,
-    zcash_amount: zcashAmount
+    starknet_amount: converted_amount.toString(),
+    zcash_amount: '1.0'
   })
 });
 
-// 3. Create Zcash HTLC with hash_lock
+// 4. Create Zcash HTLC with hash_lock
 // (User handles this via Zcash wallet)
 
-// 4. Indexer detects Zcash HTLC → relayer creates Starknet HTLC
+// 5. Indexer detects Zcash HTLC → relayer creates Starknet HTLC
 
-// 5. Monitor and redeem when ready
+// 6. Monitor and redeem when ready
 
+
+Price Feed Features
+Real-time Updates: Prices refresh every 60 seconds
+Multi-source Aggregation: Averages prices from CryptoCompare and CoinGecko
+Slippage Protection: Swap validation checks for price deviations > 5%
+Available Pairs: STRK-ZEC, ZEC-STRK, STRK-USD, ZEC-USD
 
 Error Codes
 Code
@@ -316,6 +425,8 @@ Unauthorized (invalid HMAC)
 Resource not found
 500
 Internal server error
+503
+Service unavailable (price data not ready)
 
 
 Important Security Notes
@@ -325,7 +436,10 @@ Verify deposit before initiating - Starknet → Zcash swaps require prior deposi
 Store secret securely - needed for redemption
 Use SHA256 for hash_lock - cross-chain compatibility
 HMAC secret - obtain from relayer operator
+Check current prices before swap - market rates change constantly
+Allow for slippage - prices may move during swap execution
 
 Support
 For issues or questions, contact the relayer operator or check system logs.
+
 

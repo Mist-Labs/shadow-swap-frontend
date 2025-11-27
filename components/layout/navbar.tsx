@@ -17,11 +17,11 @@ import {
 import { WalletButton } from '@/components/wallet/wallet-button'
 
 const navItems = [
+  { href: '/bridge', label: 'Bridge', icon: Network, primary: true },
   { href: '/', label: 'Swap', icon: ArrowLeftRight },
   { href: '/pools', label: 'Pools', icon: TrendingUp },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/portfolio', label: 'Portfolio', icon: Wallet },
-  { href: '/bridge', label: 'Bridge', icon: Network }
+  { href: '/portfolio', label: 'Portfolio', icon: Wallet }
 ]
 
 export function Navbar () {
@@ -48,7 +48,7 @@ export function Navbar () {
               <h1 className='text-xl font-bold bg-linear-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent'>
                 Shadow Swap
               </h1>
-              <p className='text-xs text-slate-400'>Privacy First</p>
+              <p className='text-xs text-slate-300'>Privacy First</p>
             </div>
           </Link>
 
@@ -82,7 +82,7 @@ export function Navbar () {
                       <Icon
                         size={18}
                         className={
-                          isActive ? 'text-indigo-400' : 'text-slate-400'
+                          isActive ? 'text-indigo-400' : 'text-slate-300'
                         }
                       />
                       <span
@@ -104,7 +104,7 @@ export function Navbar () {
             <WalletButton />
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className='md:hidden p-2 rounded-xl hover:bg-slate-700 transition-colors text-slate-400 cursor-pointer'
+              className='md:hidden p-2 rounded-xl hover:bg-slate-700 transition-colors text-slate-300 cursor-pointer'
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -143,7 +143,7 @@ export function Navbar () {
                       <Icon
                         size={20}
                         className={
-                          isActive ? 'text-indigo-400' : 'text-slate-400'
+                          isActive ? 'text-indigo-400' : 'text-slate-300'
                         }
                       />
                       <span

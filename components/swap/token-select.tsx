@@ -13,13 +13,15 @@ interface TokenSelectProps {
   onSelect: (token: Token) => void
   excludeToken?: Token | null
   forceDirection?: 'up' | 'down'
+  filterByChain?: 'starknet' | 'zcash' | null // Filter tokens by chain
 }
 
 export function TokenSelect ({
   token,
   onSelect,
   excludeToken,
-  forceDirection
+  forceDirection,
+  filterByChain
 }: TokenSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -43,9 +45,15 @@ export function TokenSelect ({
     setMounted(true)
   }, [])
 
-  const availableTokens = TOKENS.filter(
-    t => !excludeToken || t.address !== excludeToken.address
-  )
+  const availableTokens = TOKENS.filter(t => {
+    // Filter by excluded token
+    if (excludeToken && t.address === excludeToken.address) return false
+    
+    // Filter by chain if specified
+    if (filterByChain && t.chain !== filterByChain) return false
+    
+    return true
+  })
 
   const filteredTokens = availableTokens.filter(
     t =>
@@ -156,7 +164,7 @@ export function TokenSelect ({
             <span className='font-bold text-white text-sm'>{token.symbol}</span>
           </>
         ) : (
-          <span className='text-slate-400 font-medium text-sm'>
+          <span className='text-slate-200 font-medium text-sm'>
             Select Token
           </span>
         )}
@@ -164,7 +172,7 @@ export function TokenSelect ({
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          <ChevronDown size={16} className='text-slate-400 ml-auto' />
+          <ChevronDown size={16} className='text-slate-200 ml-auto' />
         </motion.div>
       </motion.button>
 
@@ -219,7 +227,7 @@ export function TokenSelect ({
                     <div className='relative'>
                       <Search
                         size={18}
-                        className='absolute left-3 top-1/2 -translate-y-1/2 text-slate-400'
+                        className='absolute left-3 top-1/2 -translate-y-1/2 text-slate-300'
                       />
                       <input
                         ref={searchInputRef}
@@ -227,7 +235,7 @@ export function TokenSelect ({
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         placeholder='Search tokens...'
-                        className='w-full pl-10 pr-4 py-2.5 bg-slate-700/60 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all'
+                        className='w-full pl-10 pr-4 py-2.5 bg-slate-700/60 rounded-xl text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all'
                         style={{
                           boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.3)'
                         }}
@@ -242,7 +250,7 @@ export function TokenSelect ({
                   >
                     {filteredTokens.length === 0 ? (
                       <div className='p-8 text-center'>
-                        <p className='text-slate-400 text-sm'>
+                        <p className='text-slate-200 text-sm'>
                           No tokens found
                         </p>
                       </div>
@@ -273,16 +281,16 @@ export function TokenSelect ({
                               {t.isPrivate && (
                                 <Lock
                                   size={12}
-                                  className='text-slate-400 shrink-0'
+                                  className='text-slate-300 shrink-0'
                                 />
                               )}
                             </div>
-                            <div className='text-xs text-slate-400 truncate'>
+                            <div className='text-xs text-slate-300 truncate'>
                               {t.name}
                             </div>
                           </div>
                           <div className='text-right'>
-                            <div className='font-medium text-slate-300 text-sm'>
+                            <div className='font-medium text-slate-100 text-sm'>
                               {isConnected
                                 ? getFormattedBalance(t, 4)
                                 : '0.00'}

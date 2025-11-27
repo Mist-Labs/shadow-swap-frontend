@@ -53,8 +53,8 @@ export default function Home () {
               transition={{ delay: 0.2, type: 'spring' }}
               className='inline-flex items-center gap-2 px-4 py-2 bg-slate-700 rounded-full mb-6'
             >
-              <Lock size={16} className='text-slate-400' />
-              <span className='text-sm font-semibold text-slate-300'>
+              <Lock size={16} className='text-indigo-400' />
+              <span className='text-sm font-semibold text-white'>
                 Privacy-First Trading
               </span>
             </motion.div>
@@ -63,9 +63,8 @@ export default function Home () {
                 Shadow Swap
               </span>
             </h1>
-            <p className='text-xl text-slate-400 max-w-2xl mx-auto'>
-              Anonymous, fast, and secure token swaps on Starknet with Zcash
-              integration
+            <p className='text-xl text-slate-300 max-w-2xl mx-auto'>
+              Fast and private STRK ↔ VEIL swaps on Starknet. Bridge to Zcash for cross-chain privacy.
             </p>
           </motion.div>
 
@@ -93,7 +92,7 @@ export default function Home () {
                   size={18}
                   className={`text-${feature.color}-400`}
                 />
-                <span className='text-sm font-semibold text-slate-300'>
+                <span className='text-sm font-semibold text-white'>
                   {feature.label}
                 </span>
               </motion.div>
@@ -124,12 +123,12 @@ export default function Home () {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 + index * 0.1 }}
                 whileHover={{ scale: 1.05 }}
-                className='text-center p-6 bg-white/80 backdrop-blur-sm rounded-2xl border border-indigo-100 shadow-sm'
+                className='text-center p-6 bg-slate-800/80 backdrop-blur-sm rounded-2xl border border-slate-700 shadow-sm'
               >
-                <div className='text-3xl font-bold bg-linear-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent mb-2'>
+                <div className='text-3xl font-bold bg-linear-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent mb-2'>
                   {stat.value}
                 </div>
-                <div className='text-sm text-slate-600'>{stat.label}</div>
+                <div className='text-sm text-slate-200'>{stat.label}</div>
               </motion.div>
             ))}
           </motion.div>

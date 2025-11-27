@@ -51,7 +51,7 @@ export function SettingsModal ({
             <label className='block text-base font-semibold text-white mb-2'>
               Slippage Tolerance
             </label>
-            <p className='text-sm text-slate-400 leading-relaxed'>
+            <p className='text-sm text-slate-200 leading-relaxed'>
               Your transaction will revert if the price changes unfavorably by
               more than this percentage.
             </p>
@@ -100,7 +100,7 @@ export function SettingsModal ({
                 className='w-full px-4 py-3 bg-slate-700/80 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all duration-200'
                 style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.4)' }}
               />
-              <span className='absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium'>
+              <span className='absolute right-4 top-1/2 -translate-y-1/2 text-slate-200 font-medium'>
                 %
               </span>
             </div>
@@ -163,7 +163,7 @@ export function SettingsModal ({
               <h4 className='text-sm font-semibold text-white mb-1.5'>
                 What is Slippage?
               </h4>
-              <p className='text-xs text-slate-400 leading-relaxed'>
+              <p className='text-xs text-slate-200 leading-relaxed'>
                 Slippage is the difference between the expected price of a trade
                 and the actual price at which it executes. Lower slippage means
                 more precise trades but may fail in volatile markets. Higher
