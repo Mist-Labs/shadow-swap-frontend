@@ -9,9 +9,11 @@
   "source": {
     "shasum": "bRciDORIF/UB6+EjrJZUXF29nIgvGKuddiJxFfQV/qs=",
     "location": {
-      "local": {
-        "filePath": "/snap/bundle.js",
-        "iconPath": "/snap/logo.svg"
+      "npm": {
+        "filePath": "dist/bundle.js",
+        "iconPath": "images/logo.svg",
+        "packageName": "@chainsafe/webzjs-zcash-snap",
+        "registry": "https://registry.npmjs.org/"
       }
     }
   },

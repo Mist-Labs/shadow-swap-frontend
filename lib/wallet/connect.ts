@@ -404,45 +404,45 @@ export async function connectZcashWalletMetamask (): Promise<ZcashWallet> {
       throw new Error('Failed to connect to MetaMask')
     }
 
-    // For localhost: Use npm snap (already installed) - will have origin restrictions but that's expected
-    // For production: Use npm snap - works fine
     console.log('[Zcash] Connecting to Zcash wallet via MetaMask Snap')
     
-    let snapId: string | null = null
-    const isLocalhost = typeof window !== 'undefined' && 
-      (window.location.hostname === 'localhost' || 
-       window.location.hostname === '127.0.0.1')
+    // Use bundled snap from our domain (has allowedOrigins: ["*"])
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : ''
+    const bundledSnapId = `local:${currentOrigin}/snap/`
     
-    // Check if npm snap is already installed
+    let snapId: string | null = null
+    
+    // Check if our bundled snap is already installed
     if (hasGetSnaps) {
       try {
         const installedSnaps = await ethereum.request({
           method: 'wallet_getSnaps'
         })
         
-        if (installedSnaps && (installedSnaps as any)['npm:@chainsafe/webzjs-zcash-snap']) {
-          snapId = 'npm:@chainsafe/webzjs-zcash-snap'
-          console.log('[Zcash] ✅ Using installed npm snap')
+        // Look for our bundled snap
+        if (installedSnaps && (installedSnaps as any)[bundledSnapId]) {
+          snapId = bundledSnapId
+          console.log('[Zcash] ✅ Using installed bundled snap')
         }
       } catch (error) {
         console.log('[Zcash] Error checking snaps:', error)
       }
     }
     
-    // If not installed, install it
+    // If not installed, install our bundled snap
     if (!snapId && hasRequestSnaps) {
       try {
-        console.log('[Zcash] Installing Zcash Snap...')
+        console.log('[Zcash] Installing bundled Zcash Snap from:', bundledSnapId)
         const installResult = await ethereum.request({
           method: 'wallet_requestSnaps',
           params: {
-            'npm:@chainsafe/webzjs-zcash-snap': {}
+            [bundledSnapId]: {}
           }
         })
         
-        if (installResult && (installResult as any)['npm:@chainsafe/webzjs-zcash-snap']) {
-          snapId = 'npm:@chainsafe/webzjs-zcash-snap'
-          console.log('[Zcash] ✅ Snap installed successfully')
+        if (installResult && (installResult as any)[bundledSnapId]) {
+          snapId = bundledSnapId
+          console.log('[Zcash] ✅ Bundled snap installed successfully')
         }
       } catch (installError: any) {
         const errorMessage = installError?.message || ''
@@ -450,22 +450,20 @@ export async function connectZcashWalletMetamask (): Promise<ZcashWallet> {
         
         if (errorCode === 4001 || errorMessage.includes('rejected')) {
           throw new Error(
-            'Wallet connection cancelled. Please approve the installation to continue.'
+            'Wallet connection cancelled. Please approve the Zcash Snap installation to continue.'
           )
         }
         
+        console.error('[Zcash] Error installing bundled snap:', installError)
         throw new Error(
-          'Unable to install Zcash wallet. Please try again or install manually: ' +
-          'MetaMask Settings > Snaps > Browse Snaps > "Zcash Shielded Wallet"'
+          'Unable to install Zcash wallet. Please ensure MetaMask is unlocked and try again.'
         )
       }
     }
     
     if (!snapId) {
       throw new Error(
-        'Unable to install Zcash wallet. ' +
-        'Please approve the installation prompt in MetaMask, or install it manually: ' +
-        'Settings > Snaps > Browse Snaps > Search "Zcash Shielded Wallet"'
+        'Unable to install Zcash wallet. Please approve the installation prompt in MetaMask.'
       )
     }
     
@@ -529,18 +527,10 @@ export async function connectZcashWalletMetamask (): Promise<ZcashWallet> {
          errorMessage.includes('allowedOrigins') ||
          errorMessage.includes('origin'))
       ) {
-        if (isLocalhost) {
-          throw new Error(
-            'Zcash wallet cannot be used on localhost. ' +
-            'The Zcash Snap only works on the production domain (https://webzjs.chainsafe.dev). ' +
-            'Please deploy your app or use a different wallet for local development.'
-          )
-        } else {
-          throw new Error(
-            'Unable to connect Zcash wallet from this domain. ' +
-            'The Zcash Snap is only authorized for specific domains.'
-          )
-        }
+        throw new Error(
+          'Unable to connect Zcash wallet. Please ensure MetaMask is unlocked and try again. ' +
+          'If the problem persists, try reinstalling the Zcash Snap.'
+        )
       }
 
       throw new Error(
