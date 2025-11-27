@@ -406,19 +406,8 @@ export async function connectZcashWalletMetamask (): Promise<ZcashWallet> {
 
     console.log('[Zcash] Connecting to Zcash wallet via MetaMask Snap')
     
-    // Determine snap ID based on environment
-    const isLocalhost = typeof window !== 'undefined' && 
-      (window.location.hostname === 'localhost' || 
-       window.location.hostname === '127.0.0.1' ||
-       window.location.hostname === '[::1]')
-    
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : ''
-    
-    // For localhost: use local: protocol
-    // For production: use https: protocol with full URL
-    const bundledSnapId = isLocalhost 
-      ? `local:${currentOrigin}/snap/`
-      : `${currentOrigin}/snap/snap.manifest.json`
+    // Use our published snap with allowedOrigins: ["*"]
+    const customSnapId = 'npm:@supermantemilorun/shadow-swap-zcash-snap'
     
     let snapId: string | null = null
     
@@ -429,30 +418,30 @@ export async function connectZcashWalletMetamask (): Promise<ZcashWallet> {
           method: 'wallet_getSnaps'
         })
         
-        // Look for our bundled snap
-        if (installedSnaps && (installedSnaps as any)[bundledSnapId]) {
-          snapId = bundledSnapId
-          console.log('[Zcash] ✅ Using installed bundled snap')
+        // Look for our custom snap
+        if (installedSnaps && (installedSnaps as any)[customSnapId]) {
+          snapId = customSnapId
+          console.log('[Zcash] ✅ Using installed custom snap')
         }
       } catch (error) {
         console.log('[Zcash] Error checking snaps:', error)
       }
     }
     
-    // If not installed, install our bundled snap
+    // If not installed, install our custom snap
     if (!snapId && hasRequestSnaps) {
       try {
-        console.log('[Zcash] Installing bundled Zcash Snap from:', bundledSnapId)
+        console.log('[Zcash] Installing Shadow Swap Zcash Snap...')
         const installResult = await ethereum.request({
           method: 'wallet_requestSnaps',
           params: {
-            [bundledSnapId]: {}
+            [customSnapId]: {}
           }
         })
         
-        if (installResult && (installResult as any)[bundledSnapId]) {
-          snapId = bundledSnapId
-          console.log('[Zcash] ✅ Bundled snap installed successfully')
+        if (installResult && (installResult as any)[customSnapId]) {
+          snapId = customSnapId
+          console.log('[Zcash] ✅ Custom snap installed successfully')
         }
       } catch (installError: any) {
         const errorMessage = installError?.message || ''
