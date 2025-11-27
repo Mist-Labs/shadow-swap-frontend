@@ -406,9 +406,19 @@ export async function connectZcashWalletMetamask (): Promise<ZcashWallet> {
 
     console.log('[Zcash] Connecting to Zcash wallet via MetaMask Snap')
     
-    // Use bundled snap from our domain (has allowedOrigins: ["*"])
+    // Determine snap ID based on environment
+    const isLocalhost = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || 
+       window.location.hostname === '127.0.0.1' ||
+       window.location.hostname === '[::1]')
+    
     const currentOrigin = typeof window !== 'undefined' ? window.location.origin : ''
-    const bundledSnapId = `local:${currentOrigin}/snap/`
+    
+    // For localhost: use local: protocol
+    // For production: use https: protocol with full URL
+    const bundledSnapId = isLocalhost 
+      ? `local:${currentOrigin}/snap/`
+      : `${currentOrigin}/snap/snap.manifest.json`
     
     let snapId: string | null = null
     
