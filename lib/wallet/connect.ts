@@ -406,63 +406,55 @@ export async function connectZcashWalletMetamask (): Promise<ZcashWallet> {
 
     console.log('[Zcash] Connecting to Zcash wallet via MetaMask Snap')
     
-    // Use our published snap with allowedOrigins: ["*"]
-    const customSnapId = 'npm:@supermantemilorun/shadow-swap-zcash-snap'
+    // Serve snap from our domain (works with regular MetaMask, no allowlist needed)
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : ''
+    const isLocalhost = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || 
+       window.location.hostname === '127.0.0.1')
     
-    let snapId: string | null = null
+    // For production: use HTTPS URL to snap manifest
+    // For localhost: use local: protocol (requires "Allow localhost" in MetaMask settings)
+    const snapId = isLocalhost 
+      ? `local:${currentOrigin}/snap/`
+      : `${currentOrigin}/snap/snap.manifest.json`
     
-    // Check if our bundled snap is already installed
-    if (hasGetSnaps) {
-      try {
-        const installedSnaps = await ethereum.request({
-          method: 'wallet_getSnaps'
-        })
-        
-        // Look for our custom snap
-        if (installedSnaps && (installedSnaps as any)[customSnapId]) {
-          snapId = customSnapId
-          console.log('[Zcash] ✅ Using installed custom snap')
+    console.log('[Zcash] Installing snap from:', snapId)
+    
+    // Install/connect to the snap
+    try {
+      const installResult = await ethereum.request({
+        method: 'wallet_requestSnaps',
+        params: {
+          [snapId]: {}
         }
-      } catch (error) {
-        console.log('[Zcash] Error checking snaps:', error)
+      })
+      
+      if (!installResult || !(installResult as any)[snapId]) {
+        throw new Error('Failed to install snap')
       }
-    }
-    
-    // If not installed, install our custom snap
-    if (!snapId && hasRequestSnaps) {
-      try {
-        console.log('[Zcash] Installing Shadow Swap Zcash Snap...')
-        const installResult = await ethereum.request({
-          method: 'wallet_requestSnaps',
-          params: {
-            [customSnapId]: {}
-          }
-        })
-        
-        if (installResult && (installResult as any)[customSnapId]) {
-          snapId = customSnapId
-          console.log('[Zcash] ✅ Custom snap installed successfully')
-        }
-      } catch (installError: any) {
-        const errorMessage = installError?.message || ''
-        const errorCode = installError?.code
-        
-        if (errorCode === 4001 || errorMessage.includes('rejected')) {
-          throw new Error(
-            'Wallet connection cancelled. Please approve the Zcash Snap installation to continue.'
-          )
-        }
-        
-        console.error('[Zcash] Error installing bundled snap:', installError)
+      
+      console.log('[Zcash] ✅ Snap installed successfully')
+    } catch (installError: any) {
+      const errorMessage = installError?.message || ''
+      const errorCode = installError?.code
+      
+      console.error('[Zcash] Error installing snap:', installError)
+      
+      if (errorCode === 4001 || errorMessage.includes('rejected')) {
         throw new Error(
-          'Unable to install Zcash wallet. Please ensure MetaMask is unlocked and try again.'
+          'Wallet connection cancelled. Please approve the Zcash Snap installation to continue.'
         )
       }
-    }
-    
-    if (!snapId) {
+      
+      if (errorMessage.includes('Fetching local snaps is disabled')) {
+        throw new Error(
+          'Local snap installation is disabled. Please enable it in MetaMask: ' +
+          'Settings > Advanced > Enable "Allow localhost snap installation", then try again.'
+        )
+      }
+      
       throw new Error(
-        'Unable to install Zcash wallet. Please approve the installation prompt in MetaMask.'
+        'Unable to install Zcash wallet. Please ensure MetaMask is unlocked and try again.'
       )
     }
     
