@@ -419,6 +419,8 @@ export async function connectZcashWalletMetamask (): Promise<ZcashWallet> {
       : `${currentOrigin}/snap/snap.manifest.json`
     
     console.log('[Zcash] Installing snap from:', snapId)
+
+    
     
     // Install/connect to the snap
     try {
