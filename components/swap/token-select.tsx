@@ -289,12 +289,21 @@ export function TokenSelect ({
                               {t.name}
                             </div>
                           </div>
-                          <div className='text-right'>
-                            <div className='font-medium text-slate-100 text-sm'>
+                          <div className='text-right flex flex-col items-end'>
+                            <div className='font-semibold text-white text-sm'>
                               {isConnected
-                                ? getFormattedBalance(t, 4)
+                                ? getFormattedBalance(t, 4) || '0.00'
                                 : '0.00'}
                             </div>
+                            {isConnected && (
+                              <div className='text-xs text-slate-400 mt-0.5'>
+                                {t.chain === 'starknet' && isStarknetConnected
+                                  ? '◈ Testnet'
+                                  : t.chain === 'zcash' && isZcashConnected
+                                  ? 'Ⓩ'
+                                  : ''}
+                              </div>
+                            )}
                           </div>
                         </motion.button>
                       ))

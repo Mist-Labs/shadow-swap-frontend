@@ -28,17 +28,24 @@ export const useBalanceStore = create<BalanceState>((set, get) => ({
   lastUpdated: null,
 
   fetchBalances: async () => {
-    const { starknetAccount, zcashWallet } = useWalletStore.getState()
+    const { starknetAccount, isStarknetConnected, zcashWallet } = useWalletStore.getState()
 
     set({ isLoading: true })
 
     try {
       const newBalances: Record<string, string> = {}
 
-      // Fetch Starknet balances
+      // Fetch Starknet balances - always use real blockchain when account exists
       if (starknetAccount) {
         const starknetBalances = await fetchStarknetBalances(starknetAccount)
         Object.assign(newBalances, starknetBalances)
+      } else if (process.env.NEXT_PUBLIC_USE_MOCK_BALANCES === 'true') {
+        // If no account but mock balances enabled, use mock balances
+        const { mockFetchStarknetBalances } = await import('@/lib/simulation/mock-balances')
+        const { createMockStarknetWallet } = await import('@/lib/simulation/mock-wallet')
+        const mockAccount = createMockStarknetWallet().account
+        const mockBalances = await mockFetchStarknetBalances(mockAccount)
+        Object.assign(newBalances, mockBalances)
       }
 
       // Fetch Zcash balance

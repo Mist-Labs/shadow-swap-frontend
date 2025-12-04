@@ -20,13 +20,13 @@ export const NETWORKS: Record<string, NetworkConfig> = {
   sepolia: {
     chainId: StarknetChainId.SEPOLIA,
     chainName: 'Starknet Sepolia',
-    rpcUrl: 'https://starknet-sepolia.public.blastapi.io',
+    rpcUrl: 'https://starknet-sepolia.infura.io/v3/eef769b164304dd796259eb3836f295a',
     explorerUrl: 'https://sepolia.starkscan.co',
   },
 };
 
 export const DEFAULT_NETWORK =
-  process.env.NEXT_PUBLIC_STARKNET_NETWORK || 'mainnet';
+  process.env.NEXT_PUBLIC_STARKNET_NETWORK || 'sepolia';
 
 export function getNetworkConfig(network: string = DEFAULT_NETWORK): NetworkConfig {
   return NETWORKS[network] || NETWORKS.mainnet;

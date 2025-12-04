@@ -2,10 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRightLeft, Settings, Info, ChevronDown, Copy, Check } from 'lucide-react'
+import { ArrowRightLeft, Settings, Info, ChevronDown, Copy, Check, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { PageTransition } from '@/components/layout/page-transition'
 import { useWalletStore } from '@/lib/stores/wallet-store'
+import { useBalanceStore } from '@/lib/stores/balance-store'
+import { useTransactionStore } from '@/lib/stores/transaction-store'
+import { executeSwap, monitorSwap } from '@/lib/services/swap'
 import { TOKENS } from '@/lib/constants/tokens'
+import { Account } from 'starknet'
 
 type BridgeDirection = 'starknet_to_zcash' | 'zcash_to_starknet'
 
@@ -17,7 +21,9 @@ const BRIDGEABLE_TOKENS = [
 ]
 
 export default function BridgePage() {
-  const { isStarknetConnected, isZcashConnected, starknetAccount, zcashWallet } = useWalletStore()
+  const { isStarknetConnected, isZcashConnected, starknetAccount, starknetAddress, zcashWallet } = useWalletStore()
+  const { getFormattedBalance } = useBalanceStore()
+  const { addTransaction } = useTransactionStore()
   
   const [direction, setDirection] = useState<BridgeDirection>('starknet_to_zcash')
   const [selectedToken, setSelectedToken] = useState(BRIDGEABLE_TOKENS[0])
@@ -28,6 +34,12 @@ export default function BridgePage() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [copiedAddress, setCopiedAddress] = useState(false)
   const [addressError, setAddressError] = useState('')
+  // Bridge status tracking (similar to swap)
+  const [bridgeStatus, setBridgeStatus] = useState<'idle' | 'approving' | 'depositing' | 'initiating' | 'monitoring' | 'completed' | 'failed'>('idle')
+  const [bridgeSwapId, setBridgeSwapId] = useState<string | null>(null)
+  const [bridgeTxHash, setBridgeTxHash] = useState<string | null>(null)
+  const [bridgeCurrentStatus, setBridgeCurrentStatus] = useState<string | null>(null)
+  const [bridgeError, setBridgeError] = useState<string | null>(null)
   
   // Validate Zcash address
   const validateZcashAddress = (addr: string) => {
@@ -66,10 +78,10 @@ export default function BridgePage() {
     t.chain === (direction === 'starknet_to_zcash' ? 'starknet' : 'zcash')
   )
   
-  const destToken = TOKENS.find(
-    t => t.symbol === selectedToken.symbol && 
-    t.chain === (direction === 'starknet_to_zcash' ? 'zcash' : 'starknet')
-  )
+  // For cross-chain bridge, destination is always ZEC when going to Zcash, or source token when going to Starknet
+  const destToken = direction === 'starknet_to_zcash'
+    ? TOKENS.find(t => t.symbol === 'ZEC' && t.chain === 'zcash') // Bridge to ZEC
+    : TOKENS.find(t => t.symbol === selectedToken.symbol && t.chain === 'starknet') // Bridge from ZEC to selected token
   
   // Auto-set destination address from connected wallet (if available)
   const autoDestinationAddress = direction === 'starknet_to_zcash'
@@ -88,7 +100,7 @@ export default function BridgePage() {
     ? (customAddress.length > 0 && !addressError) 
     : (destConnected || customAddress.length > 0)
   
-  const canBridge = sourceConnected && amount && hasValidDestinationAddress
+  const canBridge = sourceConnected && amount && hasValidDestinationAddress && sourceToken && destToken && parseFloat(amount) > 0
   
   const handleFlipDirection = () => {
     setDirection(prev => 
@@ -96,30 +108,127 @@ export default function BridgePage() {
     )
     setAmount('')
     setCustomAddress('')
+    // Reset bridge state when flipping
+    if (bridgeStatus !== 'idle') {
+      resetBridge()
+    }
+  }
+  
+  const resetBridge = () => {
+    setIsBridging(false)
+    setBridgeStatus('idle')
+    setBridgeSwapId(null)
+    setBridgeTxHash(null)
+    setBridgeCurrentStatus(null)
+    setBridgeError(null)
+    setAmount('')
   }
   
   const handleBridge = async () => {
-    if (!canBridge) return
+    // Validate all required fields
+    if (!canBridge) {
+      console.log('[Bridge] Cannot bridge - validation failed:', {
+        sourceConnected,
+        amount,
+        hasValidDestinationAddress,
+        sourceToken: !!sourceToken,
+        destToken: !!destToken,
+        starknetAccount: !!starknetAccount,
+        starknetAddress: !!starknetAddress
+      })
+      return
+    }
+    
+    if (!sourceToken || !destToken || !starknetAccount || !starknetAddress) {
+      console.error('[Bridge] Missing required parameters:', {
+        sourceToken: !!sourceToken,
+        destToken: !!destToken,
+        starknetAccount: !!starknetAccount,
+        starknetAddress: !!starknetAddress
+      })
+      setBridgeError('Missing required parameters. Please check your wallet connection and try again.')
+      return
+    }
+    
+    if (!amount || parseFloat(amount) <= 0) {
+      setBridgeError('Please enter a valid amount greater than 0')
+      return
+    }
     
     setIsBridging(true)
+    setBridgeStatus('approving')
+    setBridgeError(null)
+    
     try {
-      // TODO: Implement bridge logic using relayer API
-      console.log('Bridging:', {
+      console.log('[Bridge] Starting bridge:', {
         direction,
         amount,
         destinationAddress: displayDestinationAddress,
-        sourceToken: sourceToken?.symbol,
-        destToken: destToken?.symbol
+        sourceToken: sourceToken.symbol,
+        destToken: destToken.symbol,
+        sourceTokenAddress: sourceToken.address,
+        destTokenAddress: destToken.address
       })
       
-      // This will use the same swap logic but with cross-chain direction
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Use the swap service for cross-chain bridging - same as swap page
+      const result = await executeSwap({
+        fromToken: sourceToken.symbol as 'STRK' | 'VEIL' | 'ZEC',
+        toToken: destToken.symbol as 'STRK' | 'VEIL' | 'ZEC',
+        amount,
+        userAddress: starknetAddress,
+        account: starknetAccount as Account,
+        swapDirection: direction,
+        onStatusUpdate: (status) => {
+          console.log('[Bridge] Status update:', status)
+          setBridgeStatus(status as any)
+        }
+      })
       
-      alert('Bridge initiated! Check your destination wallet.')
-    } catch (error) {
-      console.error('Bridge error:', error)
-      alert('Bridge failed. Please try again.')
-    } finally {
+      console.log('[Bridge] Swap executed, swapId:', result.swapId, 'txHash:', result.txHash)
+      
+      setBridgeSwapId(result.swapId)
+      setBridgeTxHash(result.txHash)
+      setBridgeStatus('monitoring')
+      
+      // Add transaction to history
+      addTransaction({
+        type: 'bridge',
+        fromToken: sourceToken.symbol,
+        toToken: destToken.symbol,
+        amount,
+        status: 'pending',
+        txHash: result.txHash || undefined,
+        swapId: result.swapId,
+        direction
+      })
+      
+      // Monitor swap status - same as swap page
+      monitorSwap(result.swapId, (status) => {
+        console.log('[Bridge] Swap status update:', status)
+        const apiStatus = status.data?.status
+        setBridgeCurrentStatus(apiStatus)
+        const { updateTransaction } = useTransactionStore.getState()
+        
+        if (apiStatus === 'redeemed') {
+          setBridgeStatus('completed')
+          setIsBridging(false)
+          updateTransaction(result.swapId, { status: 'completed' })
+          // Refresh balances
+          useBalanceStore.getState().fetchBalances()
+        } else if (apiStatus === 'failed' || apiStatus === 'refunded') {
+          setBridgeStatus('failed')
+          setIsBridging(false)
+          setBridgeError(`Bridge ${apiStatus}. Please try again.`)
+          updateTransaction(result.swapId, { status: 'failed' })
+        } else if (apiStatus === 'locked') {
+          // Update to show it's locked
+          updateTransaction(result.swapId, { status: 'pending' })
+        }
+      })
+    } catch (error: any) {
+      console.error('[Bridge] Bridge error:', error)
+      setBridgeStatus('failed')
+      setBridgeError(error.message || 'Bridge failed. Please try again.')
       setIsBridging(false)
     }
   }
@@ -217,9 +326,9 @@ export default function BridgePage() {
                   disabled={!sourceConnected}
                 />
                 
-                {sourceConnected && (
+                {sourceConnected && sourceToken && (
                   <div className='text-xs text-slate-300 mt-2'>
-                    Balance: 0.00 {selectedToken.symbol}
+                    Balance: {getFormattedBalance(sourceToken, 4)} {selectedToken.symbol}
                   </div>
                 )}
               </div>
@@ -437,22 +546,209 @@ export default function BridgePage() {
               </AnimatePresence>
             </div>
 
+            {/* Bridge Status Display */}
+            <AnimatePresence>
+              {isBridging && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='mb-4 p-4 bg-indigo-900/30 border border-indigo-500/30 rounded-xl'
+                >
+                  <div className='space-y-3'>
+                    <div className='flex items-center justify-between'>
+                      <span className='text-sm font-medium text-indigo-200'>Bridge in Progress</span>
+                      <span className='text-xs text-indigo-300 capitalize'>{bridgeStatus}</span>
+                    </div>
+                    
+                    {/* Status steps */}
+                    <div className='space-y-2'>
+                      <div className={`flex items-center gap-2 text-xs ${bridgeStatus === 'approving' ? 'text-indigo-200' : bridgeStatus === 'depositing' || bridgeStatus === 'initiating' || bridgeStatus === 'monitoring' ? 'text-green-300' : 'text-slate-400'}`}>
+                        {bridgeStatus === 'approving' ? (
+                          <Loader2 size={14} className='animate-spin' />
+                        ) : (bridgeStatus === 'depositing' || bridgeStatus === 'initiating' || bridgeStatus === 'monitoring') ? (
+                          <CheckCircle size={14} />
+                        ) : (
+                          <div className='w-3.5 h-3.5 rounded-full border-2 border-slate-500' />
+                        )}
+                        <span>Approving token spending</span>
+                      </div>
+                      <div className={`flex items-center gap-2 text-xs ${bridgeStatus === 'depositing' ? 'text-indigo-200' : bridgeStatus === 'initiating' || bridgeStatus === 'monitoring' ? 'text-green-300' : 'text-slate-400'}`}>
+                        {bridgeStatus === 'depositing' ? (
+                          <Loader2 size={14} className='animate-spin' />
+                        ) : (bridgeStatus === 'initiating' || bridgeStatus === 'monitoring') ? (
+                          <CheckCircle size={14} />
+                        ) : (
+                          <div className='w-3.5 h-3.5 rounded-full border-2 border-slate-500' />
+                        )}
+                        <span>Depositing to pool</span>
+                      </div>
+                      <div className={`flex items-center gap-2 text-xs ${bridgeStatus === 'initiating' ? 'text-indigo-200' : bridgeStatus === 'monitoring' ? 'text-green-300' : 'text-slate-400'}`}>
+                        {bridgeStatus === 'initiating' ? (
+                          <Loader2 size={14} className='animate-spin' />
+                        ) : bridgeStatus === 'monitoring' ? (
+                          <CheckCircle size={14} />
+                        ) : (
+                          <div className='w-3.5 h-3.5 rounded-full border-2 border-slate-500' />
+                        )}
+                        <span>Initiating bridge</span>
+                      </div>
+                      <div className={`flex items-center gap-2 text-xs ${bridgeStatus === 'monitoring' ? 'text-indigo-200' : 'text-slate-400'}`}>
+                        {bridgeStatus === 'monitoring' ? (
+                          <Loader2 size={14} className='animate-spin' />
+                        ) : (
+                          <div className='w-3.5 h-3.5 rounded-full border-2 border-slate-500' />
+                        )}
+                        <span>Processing bridge</span>
+                        {bridgeCurrentStatus && (
+                          <span className='text-indigo-300 ml-2'>({bridgeCurrentStatus})</span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Progress bar */}
+                    <div className='w-full bg-slate-700/50 rounded-full h-2 mt-3'>
+                      <motion.div
+                        className='bg-indigo-500 h-2 rounded-full'
+                        initial={{ width: '0%' }}
+                        animate={{
+                          width: bridgeStatus === 'approving' ? '25%' :
+                                 bridgeStatus === 'depositing' ? '50%' :
+                                 bridgeStatus === 'initiating' ? '75%' :
+                                 bridgeStatus === 'monitoring' ? '90%' :
+                                 bridgeStatus === 'completed' ? '100%' : '0%'
+                        }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    </div>
+                    
+                    {/* Transaction info */}
+                    {(bridgeTxHash || bridgeSwapId) && (
+                      <div className='pt-2 border-t border-indigo-700/50 space-y-1'>
+                        {bridgeTxHash && (
+                          <div className='text-xs text-indigo-300 break-all'>
+                            TX: <span className='font-mono'>{bridgeTxHash.slice(0, 20)}...</span>
+                          </div>
+                        )}
+                        {bridgeSwapId && (
+                          <div className='text-xs text-indigo-300 break-all'>
+                            Swap ID: <span className='font-mono'>{bridgeSwapId.slice(0, 30)}...</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+              
+              {bridgeStatus === 'completed' && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className='mb-4 p-4 bg-green-900/30 border border-green-500/30 rounded-xl'
+                >
+                  <div className='flex items-start justify-between mb-3'>
+                    <div className='flex items-center gap-2'>
+                      <CheckCircle size={20} className='text-green-400' />
+                      <span className='text-sm font-bold text-green-200'>Bridge Completed!</span>
+                    </div>
+                    <button
+                      onClick={resetBridge}
+                      className='text-xs text-green-300 hover:text-green-200 underline'
+                    >
+                      New Bridge
+                    </button>
+                  </div>
+                  <div className='text-sm text-green-300 space-y-2'>
+                    <div>
+                      Successfully bridged <span className='font-semibold text-white'>{amount} {sourceToken?.symbol}</span> → <span className='font-semibold text-white'>{amount} {destToken?.symbol}</span>
+                    </div>
+                    {bridgeTxHash && (
+                      <div className='text-xs break-all pt-2 border-t border-green-700/50'>
+                        Transaction: <span className='font-mono text-green-200'>{bridgeTxHash}</span>
+                      </div>
+                    )}
+                    {bridgeSwapId && (
+                      <div className='text-xs break-all'>
+                        Swap ID: <span className='font-mono text-green-200'>{bridgeSwapId}</span>
+                      </div>
+                    )}
+                    {displayDestinationAddress && (
+                      <div className='text-xs break-all pt-2 border-t border-green-700/50'>
+                        Destination: <span className='font-mono text-green-200'>{displayDestinationAddress}</span>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+              
+              {bridgeError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className='mb-4 p-3 bg-red-900/30 border border-red-500/30 rounded-xl'
+                >
+                  <div className='flex items-start gap-2 mb-2'>
+                    <XCircle size={18} className='text-red-400 mt-0.5' />
+                    <div className='flex-1'>
+                      <div className='text-sm text-red-200 font-medium mb-1'>Bridge Failed</div>
+                      <div className='text-xs text-red-300'>{bridgeError}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={resetBridge}
+                    className='text-xs text-red-300 hover:text-red-200 underline'
+                  >
+                    Try Again
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Bridge Button */}
             <motion.button
-              whileHover={{ scale: canBridge ? 1.02 : 1 }}
-              whileTap={{ scale: canBridge ? 0.98 : 1 }}
-              onClick={handleBridge}
-              disabled={!canBridge || isBridging}
+              whileHover={{ scale: canBridge && !isBridging ? 1.02 : 1 }}
+              whileTap={{ scale: canBridge && !isBridging ? 0.98 : 1 }}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                console.log('[Bridge] Button clicked:', { canBridge, isBridging, sourceToken: !!sourceToken, destToken: !!destToken })
+                if (canBridge && !isBridging) {
+                  handleBridge()
+                } else {
+                  console.log('[Bridge] Button disabled - cannot bridge:', {
+                    canBridge,
+                    isBridging,
+                    sourceConnected,
+                    amount,
+                    hasValidDestinationAddress,
+                    sourceToken: !!sourceToken,
+                    destToken: !!destToken
+                  })
+                }
+              }}
+              disabled={!canBridge || isBridging || bridgeStatus === 'completed'}
               className={`w-full py-4 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-2 ${
-                canBridge
-                  ? 'bg-linear-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white shadow-lg'
+                canBridge && !isBridging && bridgeStatus !== 'completed'
+                  ? 'bg-linear-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white shadow-lg cursor-pointer'
                   : 'bg-slate-700 text-slate-400 cursor-not-allowed'
               }`}
             >
               {isBridging ? (
                 <>
-                  <div className='w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin' />
-                  Bridging...
+                  <Loader2 size={20} className='animate-spin' />
+                  {bridgeStatus === 'approving' ? 'Approving...' :
+                   bridgeStatus === 'depositing' ? 'Depositing...' :
+                   bridgeStatus === 'initiating' ? 'Initiating...' :
+                   bridgeStatus === 'monitoring' ? 'Processing...' :
+                   'Bridging...'}
+                </>
+              ) : bridgeStatus === 'completed' ? (
+                <>
+                  <CheckCircle size={20} />
+                  Bridge Again
                 </>
               ) : !sourceConnected ? (
                 `Connect ${direction === 'starknet_to_zcash' ? 'Starknet' : 'Zcash'} Wallet`

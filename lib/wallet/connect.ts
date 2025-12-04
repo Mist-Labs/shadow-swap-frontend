@@ -6,6 +6,8 @@ import type {
   StarknetWalletType,
   ZcashWalletType
 } from '@/lib/stores/wallet-store'
+// Mock wallet only used if real wallet connection fails (for demo)
+import { createMockStarknetWallet } from '@/lib/simulation/mock-wallet'
 
 // ============================================================================
 // Starknet Wallet Connection
@@ -94,6 +96,12 @@ export async function connectStarknetWallet (
     }
   } catch (error) {
     console.error('Starknet wallet connection error:', error)
+    // For demo: fallback to mock wallet if real connection fails
+    // In production, you'd want to show proper error to user
+    if (process.env.NEXT_PUBLIC_ALLOW_MOCK_WALLET === 'true') {
+      console.warn('Falling back to mock wallet for demo')
+      return createMockStarknetWallet()
+    }
     throw error
   }
 }

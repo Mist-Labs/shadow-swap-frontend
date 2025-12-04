@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { Token } from '@/lib/constants/tokens'
 import { useWalletStore } from './wallet-store'
 import { executeSwap, monitorSwap } from '@/lib/services/swap'
+import { useTransactionStore } from './transaction-store'
 import { Account } from 'starknet'
 
 interface SwapState {
@@ -13,6 +14,8 @@ interface SwapState {
   isSwapping: boolean
   swapStatus: 'idle' | 'approving' | 'depositing' | 'initiating' | 'monitoring' | 'completed' | 'failed'
   swapId: string | null
+  txHash: string | null
+  currentStatus: string | null // Current swap status from API (initiated, locked, redeemed, etc.)
   error: string | null
   setTokenIn: (token: Token | null) => void
   setTokenOut: (token: Token | null) => void
@@ -33,6 +36,8 @@ export const useSwapStore = create<SwapState>((set, get) => ({
   isSwapping: false,
   swapStatus: 'idle',
   swapId: null,
+  txHash: null,
+  currentStatus: null,
   error: null,
   
   setTokenIn: token => set({ tokenIn: token }),
@@ -53,15 +58,15 @@ export const useSwapStore = create<SwapState>((set, get) => ({
     
     // Get wallet state
     const walletState = useWalletStore.getState()
-    const { starknetWallet } = walletState
+    const { starknetAccount, starknetAddress } = walletState
     
-    if (!starknetWallet || !starknetWallet.account || !starknetWallet.address) {
+    if (!starknetAccount || !starknetAddress) {
       set({ error: 'Starknet wallet not connected' })
       return
     }
     
     try {
-      set({ isSwapping: true, swapStatus: 'approving', error: null })
+      set({ isSwapping: true, swapStatus: 'approving', error: null, currentStatus: null })
       
       // Determine swap direction
       let swapDirection: 'starknet_to_zcash' | 'zcash_to_starknet' | 'starknet_internal'
@@ -74,35 +79,75 @@ export const useSwapStore = create<SwapState>((set, get) => ({
         swapDirection = 'starknet_internal'
       }
       
-      // Execute the swap
+      // Execute the swap - always uses real smart contract calls
+      // Only backend API calls are mocked (handled in relayer.ts)
+      set({ swapStatus: 'approving' })
+      
       const result = await executeSwap({
         fromToken: tokenIn.symbol as 'STRK' | 'VEIL' | 'ZEC',
         toToken: tokenOut.symbol as 'STRK' | 'VEIL' | 'ZEC',
         amount: amountIn,
-        userAddress: starknetWallet.address,
-        account: starknetWallet.account as Account,
-        swapDirection
+        userAddress: starknetAddress,
+        account: starknetAccount as Account,
+        swapDirection,
+        onStatusUpdate: (status) => {
+          set({ swapStatus: status })
+        }
       })
       
       set({ 
         swapId: result.swapId,
-        swapStatus: 'monitoring'
+        txHash: result.txHash,
+        swapStatus: 'monitoring',
+        currentStatus: 'initiated'
       })
       
       // Monitor swap status
       monitorSwap(result.swapId, (status) => {
         console.log('[SwapStore] Swap status update:', status)
         
-        if (status.data.status === 'redeemed') {
-          set({ swapStatus: 'completed', isSwapping: false })
+        const apiStatus = status.data.status
+        set({ currentStatus: apiStatus })
+        
+        if (apiStatus === 'redeemed') {
+          set({ 
+            swapStatus: 'completed', 
+            isSwapping: false,
+            currentStatus: 'redeemed'
+          })
+          
+          // Update transaction status
+          if (get().swapId) {
+            useTransactionStore.getState().updateTransaction(
+              get().swapId!,
+              { status: 'completed' }
+            )
+          }
+          
           // Refresh balances
-          // TODO: Trigger balance refresh
-        } else if (status.data.status === 'failed' || status.data.status === 'refunded') {
+          import('@/lib/stores/balance-store').then(({ useBalanceStore }) => {
+            useBalanceStore.getState().fetchBalances()
+          })
+        } else if (apiStatus === 'failed' || apiStatus === 'refunded') {
           set({ 
             swapStatus: 'failed', 
             isSwapping: false,
-            error: `Swap ${status.data.status}`
+            currentStatus: apiStatus,
+            error: `Swap ${apiStatus}`
           })
+        } else if (apiStatus === 'locked') {
+          // Update status for locked
+          set({ currentStatus: 'locked' })
+          // Update transaction status
+          if (get().swapId) {
+            useTransactionStore.getState().updateTransaction(
+              get().swapId!,
+              { status: 'pending' } // Still pending until redeemed
+            )
+          }
+        } else {
+          // Update status for initiated, etc.
+          set({ currentStatus: apiStatus })
         }
       })
       
@@ -113,6 +158,14 @@ export const useSwapStore = create<SwapState>((set, get) => ({
         swapStatus: 'failed',
         error: error.message || 'Swap failed'
       })
+      
+      // Update transaction status if we have a swapId
+      if (get().swapId) {
+        useTransactionStore.getState().updateTransaction(
+          get().swapId!,
+          { status: 'failed' }
+        )
+      }
     }
   },
   
@@ -120,6 +173,8 @@ export const useSwapStore = create<SwapState>((set, get) => ({
     isSwapping: false,
     swapStatus: 'idle',
     swapId: null,
+    txHash: null,
+    currentStatus: null,
     error: null,
     amountIn: '',
     amountOut: ''

@@ -4,6 +4,17 @@
  */
 
 import { RELAYER_URL, HMAC_SECRET } from '@/lib/constants/contracts'
+import {
+  mockGetPrice,
+  mockGetAllPrices,
+  mockInitiateSwap,
+  mockGetSwapStatus,
+  mockGetSystemStats,
+  mockHealthCheck
+} from '@/lib/simulation/mock-relayer'
+
+// Use mock backend when relayer URL is not available or backend not ready
+const USE_MOCK_BACKEND = !RELAYER_URL || RELAYER_URL.includes('localhost:8080')
 
 /**
  * Generate HMAC signature for authenticated requests
@@ -46,6 +57,11 @@ export async function getPrice(
   converted_amount?: number
   timestamp: number
 }> {
+  // Use mock backend if not available
+  if (USE_MOCK_BACKEND) {
+    return mockGetPrice(fromSymbol, toSymbol, amount)
+  }
+  
   const params = new URLSearchParams({
     from_symbol: fromSymbol,
     to_symbol: toSymbol,
@@ -75,6 +91,11 @@ export async function getAllPrices(): Promise<{
   zec_to_usd: number
   timestamp: number
 }> {
+  // Use mock backend if not available
+  if (USE_MOCK_BACKEND) {
+    return mockGetAllPrices()
+  }
+  
   const response = await fetch(`${RELAYER_URL}/prices/all`)
   
   if (!response.ok) {
@@ -100,6 +121,11 @@ export async function initiateSwap(params: {
   message: string
   error: string | null
 }> {
+  // Use mock backend if not available
+  if (USE_MOCK_BACKEND) {
+    return mockInitiateSwap(params)
+  }
+  
   const timestamp = Math.floor(Date.now() / 1000).toString()
   const signature = await generateHmacSignature(timestamp, params)
   
@@ -138,6 +164,11 @@ export async function getSwapStatus(swapId: string): Promise<{
     updated_at: string
   }
 }> {
+  // Use mock backend if not available
+  if (USE_MOCK_BACKEND) {
+    return mockGetSwapStatus(swapId)
+  }
+  
   const response = await fetch(`${RELAYER_URL}/swap/${swapId}`)
   
   if (!response.ok) {
@@ -162,6 +193,11 @@ export async function getSystemStats(): Promise<{
     critical_swaps: number
   }
 }> {
+  // Use mock backend if not available
+  if (USE_MOCK_BACKEND) {
+    return mockGetSystemStats()
+  }
+  
   const response = await fetch(`${RELAYER_URL}/stats`)
   
   if (!response.ok) {
@@ -178,6 +214,11 @@ export async function healthCheck(): Promise<{
   status: string
   timestamp: string
 }> {
+  // Use mock backend if not available
+  if (USE_MOCK_BACKEND) {
+    return mockHealthCheck()
+  }
+  
   const response = await fetch(`${RELAYER_URL}/health`)
   
   if (!response.ok) {

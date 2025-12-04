@@ -82,12 +82,37 @@ export async function verifySecret(secret: string, hashLock: string): Promise<bo
  */
 export function toWei(amount: string | number): string {
   const amountStr = typeof amount === 'number' ? amount.toString() : amount
+  
+  // Handle scientific notation
+  if (amountStr.includes('e') || amountStr.includes('E')) {
+    const num = parseFloat(amountStr)
+    if (isNaN(num) || !isFinite(num)) {
+      throw new Error('Invalid number format')
+    }
+    // Convert to fixed decimal string
+    const fixedStr = num.toFixed(18)
+    const [whole, decimal = ''] = fixedStr.split('.')
+    return (whole + decimal.padEnd(18, '0').slice(0, 18)).replace(/^0+/, '') || '0'
+  }
+  
   const [whole, decimal = ''] = amountStr.split('.')
+  
+  // Validate whole part
+  if (whole && !/^\d+$/.test(whole.replace(/^-/, ''))) {
+    throw new Error('Invalid number format in whole part')
+  }
   
   // Pad decimals to 18 places
   const paddedDecimal = decimal.padEnd(18, '0').slice(0, 18)
   
-  return (whole + paddedDecimal).replace(/^0+/, '') || '0'
+  const result = (whole + paddedDecimal).replace(/^0+/, '') || '0'
+  
+  // Final validation
+  if (result === '0' && parseFloat(amountStr) > 0) {
+    throw new Error('Amount too small to convert to wei')
+  }
+  
+  return result
 }
 
 /**

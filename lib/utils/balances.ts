@@ -1,7 +1,17 @@
 import type { AccountInterface } from 'starknet'
-import { Contract } from 'starknet'
+import { Contract, RpcProvider, CallData } from 'starknet'
 import type { Token } from '@/lib/constants/tokens'
 import { TOKENS } from '@/lib/constants/tokens'
+import {
+  mockFetchStarknetTokenBalance,
+  mockFetchStarknetBalances,
+  mockFetchZcashBalance
+} from '@/lib/simulation/mock-balances'
+import { getNetworkConfig } from '@/lib/constants/networks'
+
+// Use mock balances only if explicitly enabled (for demo when blockchain not available)
+// Should NOT be used when real wallet is connected
+const USE_MOCK_BALANCES = process.env.NEXT_PUBLIC_USE_MOCK_BALANCES === 'true'
 
 // ERC20 ABI for balanceOf
 const ERC20_ABI = [
@@ -21,21 +31,56 @@ export async function fetchStarknetTokenBalance (
   account: AccountInterface,
   tokenAddress: string
 ): Promise<string> {
+  // Always use real blockchain calls when account is provided
+  // Only use mocks if explicitly enabled AND no real account
+  if (USE_MOCK_BALANCES && !account) {
+    return mockFetchStarknetTokenBalance(account, tokenAddress)
+  }
+  
   try {
-    const contract = new Contract(ERC20_ABI, tokenAddress, account)
-    const result = await contract.balanceOf(account.address)
+    console.log(`[Balance] Fetching balance for token ${tokenAddress} on account ${account.address}`)
+    
+    // Use custom provider with Infura RPC to avoid wallet's RPC CORS issues
+    const networkConfig = getNetworkConfig()
+    const customProvider = new RpcProvider({ nodeUrl: networkConfig.rpcUrl })
+    
+    // Use callContract for view function with our custom provider
+    const balanceCall = {
+      contractAddress: tokenAddress,
+      entrypoint: 'balanceOf',
+      calldata: CallData.compile({
+        account: account.address
+      })
+    }
+    
+    const result = await customProvider.callContract(balanceCall)
+    console.log(`[Balance] Raw result:`, result)
 
-    // result is a Uint256 object with low and high fields
-    if (result && typeof result === 'object' && 'low' in result) {
+    // Handle response from callContract - returns array [low, high] for Uint256
+    if (result && Array.isArray(result) && result.length >= 2) {
+      const [low, high] = result as [string, string]
+      const lowBigInt = BigInt(low || '0')
+      const highBigInt = BigInt(high || '0')
+      const shift = BigInt(128)
+      const balance = lowBigInt + (highBigInt << shift)
+      return balance.toString()
+    }
+    
+    // Fallback: result might be object with low/high
+    if (result && typeof result === 'object' && 'low' in result && result.low !== undefined) {
+      const resultObj = result as { low: string | number; high?: string | number }
       // Convert Uint256 to BigInt
       const shift = BigInt(128)
       const balance =
-        BigInt(result.low) + BigInt(result.high) * BigInt(2) ** shift
+        BigInt(resultObj.low) + BigInt(resultObj.high || '0') * BigInt(2) ** shift
       return balance.toString()
     }
 
     // Fallback if result is already a string or number
-    return result?.toString() || '0'
+    if (result !== null && result !== undefined) {
+      return String(result)
+    }
+    return '0'
   } catch (error) {
     console.error(`Error fetching balance for token ${tokenAddress}:`, error)
     return '0'
@@ -49,16 +94,16 @@ export async function fetchStarknetETHBalance (
   account: AccountInterface
 ): Promise<string> {
   try {
-    // Use the provider to get balance
-    const provider = (account as any).provider
-    if (provider && provider.getBalance) {
-      const balance = await provider.getBalance(account.address)
-      return balance.toString()
-    }
-
-    // Fallback: try calling the ETH token contract directly
+    // Use custom provider with Infura RPC to avoid wallet's RPC CORS issues
+    const networkConfig = getNetworkConfig()
+    const customProvider = new RpcProvider({ nodeUrl: networkConfig.rpcUrl })
+    
+    // Use getBalance method from RpcProvider (if available) or call ETH token contract
+    // ETH token address on Starknet
     const ethTokenAddress =
       '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7'
+    
+    // Use the same balanceOf approach as other tokens
     return await fetchStarknetTokenBalance(account, ethTokenAddress)
   } catch (error) {
     console.error('Error fetching ETH balance:', error)
@@ -72,15 +117,36 @@ export async function fetchStarknetETHBalance (
 export async function fetchStarknetBalances (
   account: AccountInterface
 ): Promise<Record<string, string>> {
+  // Always use real blockchain calls when account is provided
+  // Only use mocks if explicitly enabled AND no real account
+  if (USE_MOCK_BALANCES && !account) {
+    return mockFetchStarknetBalances(account)
+  }
+  
   const balances: Record<string, string> = {}
 
   try {
+    console.log(`[Balance] Fetching balances for account: ${account.address}`)
+    
+    // Check account provider/chain
+    const provider = (account as any).provider
+    if (provider) {
+      try {
+        const chainId = await provider.getChainId()
+        console.log(`[Balance] Account chain ID: ${chainId}`)
+      } catch (e) {
+        console.warn(`[Balance] Could not get chain ID:`, e)
+      }
+    }
+    
     // Fetch balances for all Starknet tokens
     const starknetTokens = TOKENS.filter(token => token.chain === 'starknet')
+    console.log(`[Balance] Fetching balances for ${starknetTokens.length} tokens:`, starknetTokens.map(t => t.symbol))
 
     await Promise.all(
       starknetTokens.map(async token => {
         try {
+          console.log(`[Balance] Fetching ${token.symbol} balance from address ${token.address}`)
           let balance: string
 
           // ETH is the native token, use getBalance
@@ -90,15 +156,24 @@ export async function fetchStarknetBalances (
             balance = await fetchStarknetTokenBalance(account, token.address)
           }
 
+          console.log(`[Balance] ${token.symbol} balance: ${balance}`)
           balances[token.address] = balance
         } catch (error) {
-          console.error(`Error fetching balance for ${token.symbol}:`, error)
+          console.error(`[Balance] Error fetching balance for ${token.symbol}:`, error)
+          if (error instanceof Error) {
+            console.error(`[Balance] Error details: ${error.message}`)
+          }
           balances[token.address] = '0'
         }
       })
     )
+    
+    console.log(`[Balance] Final balances:`, balances)
   } catch (error) {
-    console.error('Error fetching Starknet balances:', error)
+    console.error('[Balance] Error fetching Starknet balances:', error)
+    if (error instanceof Error) {
+      console.error('[Balance] Error details:', error.message, error.stack)
+    }
   }
 
   return balances
@@ -111,6 +186,12 @@ export async function fetchZcashBalance (
   provider: any,
   address: string
 ): Promise<string> {
+  // Always use real provider calls when provider is provided
+  // Only use mocks if explicitly enabled AND no real provider
+  if (USE_MOCK_BALANCES && !provider) {
+    return mockFetchZcashBalance(provider, address)
+  }
+  
   try {
     // For MetaMask with Zcash Snap
     if (provider && provider.request) {
